@@ -37,13 +37,13 @@ def build():
         "--windowed",           # Hides the console window on launch
         "--name", "JobHunterGermany",
         "--add-data", data_arg,
+        "--collect-all", "curl_cffi",
+        "--collect-all", "jobspy",
+        "--collect-all", "webview",
         "--hidden-import", "openpyxl",
         "--hidden-import", "pandas",
         "--hidden-import", "requests",
         "--hidden-import", "bs4",
-        "--hidden-import", "webview",
-        "--hidden-import", "curl_cffi",
-        "--hidden-import", "jobspy",
         str(BASE_DIR / "main.py")
     ]
 

@@ -12,19 +12,62 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # Look for JobHunterGermany files (either in same folder or in dist/JobHunterGermany)
 $SourceDir = $null
+$IsBinary = $false
+
 if (Test-Path "$ScriptDir\JobHunterGermany.exe") {
     $SourceDir = $ScriptDir
+    $IsBinary = $true
 } elseif (Test-Path "$ScriptDir\JobHunterGermany\JobHunterGermany.exe") {
     $SourceDir = "$ScriptDir\JobHunterGermany"
+    $IsBinary = $true
 } elseif (Test-Path "$ScriptDir\dist\JobHunterGermany\JobHunterGermany.exe") {
     $SourceDir = "$ScriptDir\dist\JobHunterGermany"
+    $IsBinary = $true
 } elseif (Test-Path "$ScriptDir\..\dist\JobHunterGermany\JobHunterGermany.exe") {
     $SourceDir = (Resolve-Path "$ScriptDir\..\dist\JobHunterGermany").Path
+    $IsBinary = $true
+} elseif (Test-Path "$ScriptDir\main.py") {
+    # Source mode
+    $SourceDir = $ScriptDir
+    $IsBinary = $false
+} elseif (Test-Path "$ScriptDir\..\main.py") {
+    $SourceDir = (Resolve-Path "$ScriptDir\..").Path
+    $IsBinary = $false
 }
 
 if (-not $SourceDir) {
-    Write-Host "[ERROR] Could not find 'JobHunterGermany.exe' in installer directory!" -ForegroundColor Red
-    Write-Host "Please ensure the application bundle is present."
+    Write-Host "[!] Could not find 'JobHunterGermany.exe' locally." -ForegroundColor Yellow
+    Write-Host "[*] Attempting to download the latest Windows standalone build from GitHub..." -ForegroundColor Cyan
+    
+    $releaseUrl = "https://github.com/Saddam18567/jobhunter-germany/releases/latest/download/JobHunterGermany_Windows_Installer.zip"
+    $tempZip = Join-Path $env:TEMP "JobHunterGermany_Download.zip"
+    $tempExtract = Join-Path $env:TEMP "JobHunterGermany_Extracted"
+    
+    try {
+        Write-Host "    Downloading: $releaseUrl ..." -ForegroundColor Gray
+        Invoke-WebRequest -Uri $releaseUrl -OutFile $tempZip -UseBasicParsing
+        
+        if (Test-Path $tempExtract) { Remove-Item $tempExtract -Recurse -Force }
+        Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+        
+        if (Test-Path "$tempExtract\JobHunterGermany_Installer\JobHunterGermany\JobHunterGermany.exe") {
+            $SourceDir = "$tempExtract\JobHunterGermany_Installer\JobHunterGermany"
+            $IsBinary = $true
+        } elseif (Test-Path "$tempExtract\JobHunterGermany\JobHunterGermany.exe") {
+            $SourceDir = "$tempExtract\JobHunterGermany"
+            $IsBinary = $true
+        }
+    } catch {
+        Write-Host "[ERROR] Could not auto-download Windows package: $_" -ForegroundColor Red
+    }
+}
+
+if (-not $SourceDir) {
+    Write-Host ""
+    Write-Host "[ERROR] JobHunterGermany.exe was not found in the installer directory!" -ForegroundColor Red
+    Write-Host "Please ensure you have downloaded the Windows release package from:"
+    Write-Host "https://github.com/Saddam18567/jobhunter-germany/releases" -ForegroundColor Cyan
+    Write-Host ""
     Read-Host "Press Enter to exit..."
     exit 1
 }
@@ -78,13 +121,38 @@ if (-not (Test-Path $InstallDir)) {
 Copy-Item -Path "$SourceDir\*" -Destination $InstallDir -Recurse -Force
 Write-Host "      Files copied successfully." -ForegroundColor Gray
 
+# If in source mode (not binary), set up python environment
+$ExeTarget = "$InstallDir\JobHunterGermany.exe"
+if (-not $IsBinary) {
+    Write-Host "[*] Setting up local Python environment in $InstallDir ..." -ForegroundColor Cyan
+    $pythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if ($pythonExe) {
+        $venvDir = "$InstallDir\.venv"
+        if (-not (Test-Path $venvDir)) {
+            Start-Process -FilePath $pythonExe -ArgumentList "-m venv $venvDir" -Wait -NoNewWindow
+        }
+        $pipExe = "$venvDir\Scripts\pip.exe"
+        if (Test-Path "$InstallDir\requirements.txt") {
+            Start-Process -FilePath $pipExe -ArgumentList "install -r `"$InstallDir\requirements.txt`"" -Wait -NoNewWindow
+        }
+        $ExeTarget = "$venvDir\Scripts\pythonw.exe"
+    }
+}
+
 # Create Desktop Shortcut
 Write-Host "[2/4] Creating Desktop Shortcut..." -ForegroundColor Green
 $WshShell = New-Object -ComObject WScript.Shell
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
 $DesktopShortcut = $WshShell.CreateShortcut("$DesktopPath\JobHunter Germany.lnk")
-$DesktopShortcut.TargetPath = "$InstallDir\JobHunterGermany.exe"
-$DesktopShortcut.WorkingDirectory = "$InstallDir"
+
+if ($IsBinary) {
+    $DesktopShortcut.TargetPath = "$InstallDir\JobHunterGermany.exe"
+    $DesktopShortcut.WorkingDirectory = "$InstallDir"
+} else {
+    $DesktopShortcut.TargetPath = "$InstallDir\.venv\Scripts\pythonw.exe"
+    $DesktopShortcut.Arguments = "`"$InstallDir\main.py`""
+    $DesktopShortcut.WorkingDirectory = "$InstallDir"
+}
 $DesktopShortcut.Description = "JobHunter Germany - AI & ATS Job Finder (Bundesagentur & JobSpy)"
 $DesktopShortcut.Save()
 Write-Host "      Desktop shortcut created: $DesktopPath\JobHunter Germany.lnk" -ForegroundColor Gray
@@ -93,15 +161,26 @@ Write-Host "      Desktop shortcut created: $DesktopPath\JobHunter Germany.lnk" 
 Write-Host "[3/4] Creating Windows Start Menu Shortcut..." -ForegroundColor Green
 $StartMenuPath = [Environment]::GetFolderPath("Programs")
 $StartMenuShortcut = $WshShell.CreateShortcut("$StartMenuPath\JobHunter Germany.lnk")
-$StartMenuShortcut.TargetPath = "$InstallDir\JobHunterGermany.exe"
-$StartMenuShortcut.WorkingDirectory = "$InstallDir"
+
+if ($IsBinary) {
+    $StartMenuShortcut.TargetPath = "$InstallDir\JobHunterGermany.exe"
+    $StartMenuShortcut.WorkingDirectory = "$InstallDir"
+} else {
+    $StartMenuShortcut.TargetPath = "$InstallDir\.venv\Scripts\pythonw.exe"
+    $StartMenuShortcut.Arguments = "`"$InstallDir\main.py`""
+    $StartMenuShortcut.WorkingDirectory = "$InstallDir"
+}
 $StartMenuShortcut.Description = "JobHunter Germany - AI & ATS Job Finder"
 $StartMenuShortcut.Save()
 Write-Host "      Start Menu shortcut created: $StartMenuPath\JobHunter Germany.lnk" -ForegroundColor Gray
 
 # Launch Application
 Write-Host "[4/4] Launching JobHunter Germany..." -ForegroundColor Green
-Start-Process -FilePath "$InstallDir\JobHunterGermany.exe" -WorkingDirectory "$InstallDir"
+if ($IsBinary) {
+    Start-Process -FilePath "$InstallDir\JobHunterGermany.exe" -WorkingDirectory "$InstallDir"
+} else {
+    Start-Process -FilePath "$InstallDir\.venv\Scripts\pythonw.exe" -ArgumentList "`"$InstallDir\main.py`"" -WorkingDirectory "$InstallDir"
+}
 
 Write-Host ""
 Write-Host "=======================================================" -ForegroundColor Cyan

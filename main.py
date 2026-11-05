@@ -69,6 +69,7 @@ def main():
     )
     parser.add_argument("--cli", action="store_true", help="Run in headless CLI mode instead of GUI")
     parser.add_argument("--browser", action="store_true", help="Force browser window instead of native desktop window")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host interface to bind HTTP server to (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=5892, help="Port for the local backend server (default: 5892)")
 
     # CLI Search Arguments
@@ -91,7 +92,7 @@ def main():
     if args.cli:
         run_cli_mode(args)
     else:
-        run_desktop_app(force_browser=args.browser, port=args.port)
+        run_desktop_app(force_browser=args.browser, host=args.host, port=args.port)
 
 if __name__ == "__main__":
     main()
