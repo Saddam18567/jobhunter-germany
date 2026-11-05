@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobHunter Germany - AI & ATS Job Finder</title>
+  <!-- Tailwind CSS via CDN with local fallback -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- Top German Flag Accent Banner -->
+  <div class="flag-accent"></div>
+
+  <!-- Header Navigation -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-amber-500 flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-500/20">
+        🇩🇪
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="text-lg font-bold tracking-tight text-white">JobHunter Germany</h1>
+          <span class="px-2 py-0.5 text-xs font-semibold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">Desktop App</span>
+        </div>
+        <p class="text-xs text-slate-400">Bundesagentur für Arbeit API • JobSpy • Workday & Personio ATS Detector</p>
+      </div>
+    </div>
+
+    <!-- Quick Action / Status -->
+    <div class="flex items-center space-x-3">
+      <button id="btnOpenFolder" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition cursor-pointer">
+        <span>📁 Exports Folder</span>
+      </button>
+      <div id="connectionStatus" class="flex items-center space-x-1.5 text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>Ready</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+    
+    <!-- LEFT SIDEBAR: Search & Filters Form -->
+    <aside class="w-full lg:w-96 border-r border-slate-800 bg-slate-900/60 p-5 overflow-y-auto shrink-0 flex flex-col justify-between">
+      <form id="searchForm" class="space-y-4">
+        
+        <!-- Job Title / Keyword -->
+        <div>
+          <label for="inputKeyword" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+            Job Title or Keywords *
+          </label>
+          <input 
+            type="text" 
+            id="inputKeyword" 
+            required
+            placeholder="e.g. Python Developer, Data Engineer..." 
+            value="Python Developer"
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          />
+          <!-- Quick Preset Chips -->
+          <div class="flex flex-wrap gap-1.5 mt-2">
+            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60" data-kw="Python Developer">Python</button>
+            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60" data-kw="Data Engineer">Data Engineer</button>
+            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60" data-kw="DevOps Engineer">DevOps</button>
+            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60" data-kw="Backend Developer">Backend</button>
+          </div>
+        </div>
+
+        <!-- Location (Germany Specific) -->
+        <div>
+          <label for="inputLocation" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+            Location in Germany
+          </label>
+          <input 
+            type="text" 
+            id="inputLocation" 
+            placeholder="e.g. Berlin, München, Deutschland..." 
+            value="Berlin"
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          />
+          <!-- City Quick Buttons -->
+          <div class="flex flex-wrap gap-1 mt-2">
+            <button type="button" class="city-chip text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700/50" data-loc="Deutschland">All Germany</button>
+            <button type="button" class="city-chip text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700/50" data-loc="Berlin">Berlin</button>
+            <button type="button" class="city-chip text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700/50" data-loc="München">München</button>
+            <button type="button" class="city-chip text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700/50" data-loc="Hamburg">Hamburg</button>
+            <button type="button" class="city-chip text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700/50" data-loc="Frankfurt am Main">Frankfurt</button>
+          </div>
+        </div>
+
+        <!-- Radius (Umkreis) & Contract Type in 2 cols -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="selectDistance" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Radius
+            </label>
+            <select id="selectDistance" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="10">10 km</option>
+              <option value="25">25 km</option>
+              <option value="50" selected>50 km</option>
+              <option value="100">100 km</option>
+              <option value="200">200 km</option>
+            </select>
+          </div>
+          <div>
+            <label for="selectJobType" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Contract Type
+            </label>
+            <select id="selectJobType" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Types</option>
+              <option value="fulltime">Full-time (Vollzeit)</option>
+              <option value="parttime">Part-time (Teilzeit)</option>
+              <option value="contract">Contract / Freelance</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Date Posted & Results Limit in 2 cols -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="selectDate" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Date Posted
+            </label>
+            <select id="selectDate" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Any time</option>
+              <option value="1">Past 24 Hours</option>
+              <option value="3">Past 3 Days</option>
+              <option value="7">Past 7 Days</option>
+              <option value="14">Past 14 Days</option>
+              <option value="30">Past 30 Days</option>
+            </select>
+          </div>
+          <div>
+            <label for="selectLimit" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Results / Source
+            </label>
+            <select id="selectLimit" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="10">10 jobs</option>
+              <option value="25" selected>25 jobs</option>
+              <option value="50">50 jobs</option>
+              <option value="100">100 jobs</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Remote / Homeoffice Checkbox -->
+        <div class="p-3 bg-slate-950/60 rounded-lg border border-slate-800 flex items-center justify-between">
+          <div>
+            <span class="text-xs font-medium text-slate-200">Remote / Home Office</span>
+            <p class="text-[11px] text-slate-500">Filter jobs offering remote flexibility</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="chkRemote" class="sr-only peer">
+            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+
+        <!-- Job Platforms to Query -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            Data Sources & APIs
+          </label>
+          <div class="space-y-1.5">
+            
+            <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-slate-800/80 hover:border-slate-700 cursor-pointer transition">
+              <div class="flex items-center space-x-2">
+                <input type="checkbox" name="sources" value="arbeitsagentur" checked class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-blue-500">
+                <span class="text-xs font-medium text-slate-200">Bundesagentur für Arbeit</span>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold border border-red-500/20">Official REST API</span>
+            </label>
+
+            <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-slate-800/80 hover:border-slate-700 cursor-pointer transition">
+              <div class="flex items-center space-x-2">
+                <input type="checkbox" name="sources" value="indeed" checked class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-blue-500">
+                <span class="text-xs font-medium text-slate-200">Indeed Germany</span>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-semibold border border-blue-500/20">JobSpy</span>
+            </label>
+
+            <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-slate-800/80 hover:border-slate-700 cursor-pointer transition">
+              <div class="flex items-center space-x-2">
+                <input type="checkbox" name="sources" value="linkedin" checked class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-blue-500">
+                <span class="text-xs font-medium text-slate-200">LinkedIn</span>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-semibold border border-indigo-500/20">JobSpy</span>
+            </label>
+
+            <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-slate-800/80 hover:border-slate-700 cursor-pointer transition">
+              <div class="flex items-center space-x-2">
+                <input type="checkbox" name="sources" value="arbeitnow" checked class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-blue-500">
+                <span class="text-xs font-medium text-slate-200">Arbeitnow</span>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20">German REST API</span>
+            </label>
+
+            <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-slate-800/80 hover:border-slate-700 cursor-pointer transition">
+              <div class="flex items-center space-x-2">
+                <input type="checkbox" name="sources" value="glassdoor" checked class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-blue-500">
+                <span class="text-xs font-medium text-slate-200">Glassdoor</span>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20">JobSpy</span>
+            </label>
+
+            <label class="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-slate-800/80 hover:border-slate-700 cursor-pointer transition">
+              <div class="flex items-center space-x-2">
+                <input type="checkbox" name="sources" value="google" class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-blue-500">
+                <span class="text-xs font-medium text-slate-200">Google Jobs</span>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-semibold border border-amber-500/20">JobSpy</span>
+            </label>
+
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-2">
+          <button 
+            type="submit" 
+            id="btnSearch"
+            class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center space-x-2 transition cursor-pointer"
+          >
+            <span id="searchIcon">🔍</span>
+            <span id="searchText">Find Jobs & Generate Excel</span>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- App Info Footer in Sidebar -->
+      <div class="pt-4 mt-4 border-t border-slate-800/80 text-[11px] text-slate-500 text-center">
+        JobHunter Germany v1.0 • Standalone App
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN PANEL: Results & Dashboard -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-slate-950">
+      
+      <!-- Metrics & Realtime Status Header -->
+      <section class="border-b border-slate-800 bg-slate-900/40 p-4">
+        
+        <!-- Live Progress Ticker -->
+        <div id="progressContainer" class="hidden mb-3">
+          <div class="flex items-center justify-between text-xs text-blue-400 mb-1">
+            <span id="progressMessage" class="flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+              <span>Searching platforms and generating Excel...</span>
+            </span>
+          </div>
+          <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+            <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-indigo-500 h-full w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <!-- Stat Cards Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          
+          <div class="glass-card p-3 rounded-xl">
+            <span class="text-[11px] font-medium text-slate-400 block uppercase">Total Jobs Found</span>
+            <span id="statTotal" class="text-2xl font-bold text-white tracking-tight">0</span>
+          </div>
+
+          <div class="glass-card p-3 rounded-xl border-blue-500/20">
+            <span class="text-[11px] font-medium text-blue-400 block uppercase">Direct ATS (Workday, etc.)</span>
+            <span id="statATS" class="text-2xl font-bold text-blue-400 tracking-tight">0</span>
+          </div>
+
+          <div class="glass-card p-3 rounded-xl">
+            <span class="text-[11px] font-medium text-emerald-400 block uppercase">Remote / Home Office</span>
+            <span id="statRemote" class="text-2xl font-bold text-emerald-400 tracking-tight">0</span>
+          </div>
+
+          <div class="glass-card p-3 rounded-xl">
+            <span class="text-[11px] font-medium text-amber-400 block uppercase">Active Sources</span>
+            <span id="statPlatforms" class="text-2xl font-bold text-amber-400 tracking-tight">0</span>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- Action & Export Toolbar -->
+      <section class="border-b border-slate-800 bg-slate-900/20 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+        
+        <!-- Instant Search / Filter input -->
+        <div class="flex-1 min-w-[240px] max-w-md relative">
+          <input 
+            type="text" 
+            id="filterInput" 
+            placeholder="Instant filter by title, company, or platform..." 
+            class="w-full bg-slate-900 border border-slate-700/80 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <span class="absolute left-2.5 top-2 text-slate-500 text-xs">🔎</span>
+        </div>
+
+        <!-- Filter Chips: All, Workday, Personio, Remote -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto text-xs">
+          <button class="filter-tab active px-2.5 py-1 rounded-md bg-blue-600 text-white font-medium" data-filter="all">All</button>
+          <button class="filter-tab px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" data-filter="workday">Workday Only</button>
+          <button class="filter-tab px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" data-filter="personio">Personio Only</button>
+          <button class="filter-tab px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" data-filter="remote">Remote Only</button>
+          <button class="filter-tab px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" data-filter="ba">Bundesagentur</button>
+        </div>
+
+        <!-- Excel Actions -->
+        <div class="flex items-center space-x-2">
+          <button 
+            id="btnExportExcel" 
+            class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm transition cursor-pointer"
+            title="Download formatted Excel (.xlsx) spreadsheet with hyperlinks"
+          >
+            <span>📊</span>
+            <span>Export to Excel</span>
+          </button>
+        </div>
+
+      </section>
+
+      <!-- Excel Auto-Generated Success Banner -->
+      <div id="excelReadyBanner" class="hidden mx-4 mt-3 p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-2.5 text-xs text-emerald-300">
+          <span class="text-xl">📊</span>
+          <div>
+            <div class="font-semibold text-white">Excel Spreadsheet Automatically Generated!</div>
+            <div class="text-[11px] text-emerald-400/90 flex items-center space-x-1 mt-0.5">
+              <span>Saved as:</span>
+              <span id="excelFileName" class="font-mono bg-emerald-900/60 px-1.5 py-0.5 rounded text-emerald-200">filename.xlsx</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btnOpenExcelDirect" class="px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow transition cursor-pointer flex items-center space-x-1.5">
+            <span>Open in Excel</span>
+            <span>↗</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Results Container (Scrollable Table & Cards) -->
+      <section class="flex-1 overflow-y-auto p-4">
+        
+        <!-- Empty / Welcome State -->
+        <div id="welcomeState" class="h-full flex flex-col items-center justify-center text-center p-8">
+          <div class="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-3xl mb-4 shadow-xl">
+            🇩🇪
+          </div>
+          <h2 class="text-lg font-bold text-white mb-2">Ready to Hunt Jobs in Germany</h2>
+          <p class="text-sm text-slate-400 max-w-md mb-4">
+            Select your position, target German location, and filters on the left. The app queries Bundesagentur für Arbeit, LinkedIn, Indeed, classifies direct Workday/Personio ATS links, and automatically outputs a formatted Excel spreadsheet.
+          </p>
+          <button id="btnQuickStart" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow transition cursor-pointer">
+            Search Python Jobs in Berlin
+          </button>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden h-full flex flex-col items-center justify-center text-center p-8">
+          <div class="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+          <h3 class="text-base font-semibold text-white">Aggregating German Job Listings...</h3>
+          <p id="loadingStatusText" class="text-xs text-slate-400 mt-1 max-w-sm">Querying official Bundesagentur API & JobSpy, building Excel file...</p>
+        </div>
+
+        <!-- Results Table -->
+        <div id="resultsTableContainer" class="hidden">
+          <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/50">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase font-semibold text-[11px] tracking-wider">
+                  <th class="py-3 px-4">Position & Company</th>
+                  <th class="py-3 px-3">Location & Type</th>
+                  <th class="py-3 px-3">Application Platform</th>
+                  <th class="py-3 px-4">How to Apply</th>
+                  <th class="py-3 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="resultsTableBody" class="divide-y divide-slate-800/60">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Bottom Status Bar -->
+      <footer class="border-t border-slate-800 bg-slate-900/90 px-4 py-2 flex items-center justify-between text-[11px] text-slate-500">
+        <span id="footerInfo">No search performed yet.</span>
+        <span id="footerExportNotice" class="text-emerald-400 hidden"></span>
+      </footer>
+
+    </main>
+
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 max-w-md bg-slate-900 border border-slate-700 text-white text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3">
+    <span id="toastIcon" class="text-base">ℹ️</span>
+    <span id="toastMessage">Notification message</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

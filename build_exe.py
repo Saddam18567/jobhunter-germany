@@ -1,0 +1,72 @@
+"""Automated PyInstaller Build Script for JobHunter Germany."""
+
+import os
+import sys
+import shutil
+import platform
+import subprocess
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+
+def build():
+    print("=======================================================")
+    print("      Building JobHunter Germany Standalone App 🇩🇪    ")
+    print("=======================================================")
+    print(f"Platform: {platform.system()} ({platform.machine()})")
+    print(f"Python:   {sys.version.split()[0]}")
+    print("-------------------------------------------------------")
+
+    # Ensure requirements are installed
+    static_folder = BASE_DIR / "ui" / "static"
+    if not static_folder.exists():
+        print(f"[ERROR] Static folder not found at {static_folder}")
+        sys.exit(1)
+
+    # Determine data separator (; on Windows, : on Linux/macOS)
+    sep = ";" if platform.system() == "Windows" else ":"
+    data_arg = f"{static_folder}{sep}ui/static"
+
+    # PyInstaller arguments
+    cmd = [
+        sys.executable,
+        "-m",
+        "PyInstaller",
+        "--noconfirm",
+        "--onedir",             # Creates an application directory (fast startup)
+        "--windowed",           # Hides the console window on launch
+        "--name", "JobHunterGermany",
+        "--add-data", data_arg,
+        "--hidden-import", "openpyxl",
+        "--hidden-import", "pandas",
+        "--hidden-import", "requests",
+        "--hidden-import", "bs4",
+        "--hidden-import", "webview",
+        "--hidden-import", "curl_cffi",
+        "--hidden-import", "jobspy",
+        str(BASE_DIR / "main.py")
+    ]
+
+    print("[*] Running PyInstaller command:")
+    print("    " + " ".join(cmd))
+    print("-------------------------------------------------------")
+
+    ret = subprocess.run(cmd, cwd=str(BASE_DIR))
+    if ret.returncode != 0:
+        print("[ERROR] Build failed! Check PyInstaller output above.")
+        sys.exit(ret.returncode)
+
+    dist_dir = BASE_DIR / "dist" / "JobHunterGermany"
+    exe_name = "JobHunterGermany.exe" if platform.system() == "Windows" else "JobHunterGermany"
+    exe_path = dist_dir / exe_name
+
+    print("\n=======================================================")
+    print("  🎉 Build Completed Successfully!")
+    print("=======================================================")
+    print(f"Application directory: {dist_dir}")
+    print(f"Executable binary:     {exe_path}")
+    print("You can distribute the 'JobHunterGermany' folder or create an installer.")
+    print("=======================================================\n")
+
+if __name__ == "__main__":
+    build()

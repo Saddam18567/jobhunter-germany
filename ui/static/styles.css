@@ -1,0 +1,111 @@
+/* Custom styles and polish for JobHunter Germany */
+
+:root {
+  --germany-black: #111827;
+  --germany-red: #DC2626;
+  --germany-gold: #F59E0B;
+  --ats-workday: #005CB9;
+  --ats-personio: #00A896;
+  --ats-greenhouse: #0F9D58;
+  --ats-lever: #4338CA;
+  --ats-softgarden: #7C3AED;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #0F172A;
+  color: #F8FAFC;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #1E293B;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Glassmorphism containers */
+.glass-panel {
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-card:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* German Flag Accent Line */
+.flag-accent {
+  height: 4px;
+  width: 100%;
+  background: linear-gradient(to right, #000000 33%, #DD0000 33%, #DD0000 66%, #FFCE00 66%);
+}
+
+/* Badges */
+.badge-workday {
+  background-color: rgba(0, 92, 185, 0.2);
+  color: #60A5FA;
+  border: 1px solid rgba(0, 92, 185, 0.4);
+}
+
+.badge-personio {
+  background-color: rgba(0, 168, 150, 0.2);
+  color: #2DD4BF;
+  border: 1px solid rgba(0, 168, 150, 0.4);
+}
+
+.badge-greenhouse {
+  background-color: rgba(15, 157, 88, 0.2);
+  color: #34D399;
+  border: 1px solid rgba(15, 157, 88, 0.4);
+}
+
+.badge-lever {
+  background-color: rgba(67, 56, 202, 0.2);
+  color: #A5B4FC;
+  border: 1px solid rgba(67, 56, 202, 0.4);
+}
+
+.badge-arbeitsagentur {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #F87171;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+}
+
+.badge-jobboard {
+  background-color: rgba(100, 116, 139, 0.2);
+  color: #CBD5E1;
+  border: 1px solid rgba(100, 116, 139, 0.4);
+}
+
+/* Pulsing loader */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.pulsing-loader {
+  animation: pulse-ring 2s infinite ease-in-out;
+}
