@@ -14,6 +14,16 @@ from typing import Dict, Any, List, Optional
 
 import webview
 
+try:
+    import certifi
+    ca_bundle = certifi.where()
+    if ca_bundle and os.path.exists(ca_bundle):
+        os.environ.setdefault("SSL_CERT_FILE", ca_bundle)
+        os.environ.setdefault("REQUESTS_CA_BUNDLE", ca_bundle)
+        os.environ.setdefault("CURL_CA_BUNDLE", ca_bundle)
+except Exception:
+    pass
+
 from config import STATIC_DIR, EXPORTS_DIR
 from core.models import SearchFilters, JobListing
 from core.aggregator import JobAggregator

@@ -51,7 +51,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v1.1.0"
+          $tag = "v1.1.1"
           if ($env:GITHUB_REF -like "refs/tags/*") {
             $tag = $env:GITHUB_REF.Substring(10)
           }

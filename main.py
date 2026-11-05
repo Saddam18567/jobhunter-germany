@@ -4,9 +4,29 @@ JobHunter Germany - Entry Point
 Unified Job Search across German APIs, Scrapers (JobSpy), and ATS Detection.
 """
 
+import os
 import sys
 import argparse
 from pathlib import Path
+
+# Fix Windows console encoding if running with console
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
+# Configure CA Certs globally for frozen PyInstaller and Windows environment
+try:
+    import certifi
+    ca_bundle = certifi.where()
+    if ca_bundle and os.path.exists(ca_bundle):
+        os.environ.setdefault("SSL_CERT_FILE", ca_bundle)
+        os.environ.setdefault("REQUESTS_CA_BUNDLE", ca_bundle)
+        os.environ.setdefault("CURL_CA_BUNDLE", ca_bundle)
+except Exception:
+    pass
 
 # Add project root to sys.path
 BASE_DIR = Path(__file__).resolve().parent
@@ -21,7 +41,7 @@ from core.exporter import JobExporter
 def run_cli_mode(args):
     """Run job search directly from terminal and export results."""
     print("=======================================================")
-    print("       JobHunter Germany - CLI Mode 🇩🇪")
+    print("       JobHunter Germany - CLI Mode [DE]")
     print("=======================================================")
     print(f"Keyword:      {args.keyword}")
     print(f"Location:     {args.location}")

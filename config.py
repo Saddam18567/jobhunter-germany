@@ -17,6 +17,21 @@ if not STATIC_DIR.exists() and (BASE_DIR / "_internal" / "ui" / "static").exists
 EXPORTS_DIR = BASE_DIR / "exports"
 EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
+# Configure logging to console and a debug file in exports
+import logging
+log_file = EXPORTS_DIR / "jobhunter_debug.log"
+try:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[
+            logging.FileHandler(str(log_file), encoding="utf-8", mode="a"),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+except Exception:
+    pass
+
 # Bundesagentur für Arbeit (BA) REST API Configuration
 BA_API_URL = "https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v6/jobs"
 BA_API_KEY = "jobboerse-jobsuche"

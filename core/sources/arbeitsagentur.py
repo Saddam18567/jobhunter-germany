@@ -2,6 +2,7 @@
 
 import logging
 import requests
+import certifi
 from typing import List, Callable, Optional
 from config import BA_API_URL, BA_API_KEY, BA_JOB_DETAIL_URL
 from core.models import SearchFilters, JobListing
@@ -17,7 +18,7 @@ class ArbeitsagenturSource(BaseJobSource):
         super().__init__("Bundesagentur für Arbeit")
         self.headers = {
             "X-API-Key": BA_API_KEY,
-            "User-Agent": "JobHunterGermany/1.0 (Mozilla/5.0; Desktop App)",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "Accept": "application/json",
         }
 
@@ -39,30 +40,30 @@ class ArbeitsagenturSource(BaseJobSource):
         # Filter by location if not searching all Germany
         loc = (filters.location or "").strip()
         if loc and loc.lower() not in ["deutschland", "deutschland (ganzes land)", "germany", "all", ""]:
-            params["wo"] = loc
+            # Clean up country suffixes for German federal database (e.g. "Berlin, Germany" -> "Berlin")
+            clean_city = loc.split(",")[0].strip()
+            params["wo"] = clean_city
             if filters.distance:
                 params["umkreis"] = filters.distance
 
-        # Filter by contract / working hours
+        # Filter by contract / working hours (vz = Vollzeit, tz = Teilzeit)
         if filters.job_type == "fulltime":
             params["arbeitszeit"] = "vz"
         elif filters.job_type == "parttime":
             params["arbeitszeit"] = "tz"
-
-        # Homeoffice / Remote
-        if filters.is_remote:
-            params["arbeitszeit"] = "ho"
 
         # Published since (days)
         if filters.date_posted_days:
             params["veroeffentlichtseit"] = filters.date_posted_days
 
         try:
+            ca_bundle = certifi.where()
             response = requests.get(
                 BA_API_URL,
                 headers=self.headers,
                 params=params,
-                timeout=12
+                timeout=15,
+                verify=ca_bundle
             )
 
             if response.status_code != 200:
@@ -73,6 +74,31 @@ class ArbeitsagenturSource(BaseJobSource):
 
             data = response.json()
             raw_jobs = data.get("ergebnisliste", [])
+
+            # Smart fallback for English terms or composite phrases if 0 results
+            if not raw_jobs and len(filters.keyword.split()) > 1:
+                fallback_kw = filters.keyword.replace("Developer", "Entwickler").replace("developer", "entwickler")
+                fallback_kw = fallback_kw.replace("Engineer", "Ingenieur").replace("engineer", "ingenieur")
+                if fallback_kw != filters.keyword:
+                    fallback_params = dict(params)
+                    fallback_params["was"] = fallback_kw
+                    try:
+                        fb_resp = requests.get(BA_API_URL, headers=self.headers, params=fallback_params, timeout=12, verify=ca_bundle)
+                        if fb_resp.status_code == 200:
+                            raw_jobs = fb_resp.json().get("ergebnisliste", [])
+                    except Exception:
+                        pass
+                if not raw_jobs:
+                    first_term = filters.keyword.split()[0]
+                    if len(first_term) >= 4:
+                        fallback_params = dict(params)
+                        fallback_params["was"] = first_term
+                        try:
+                            fb_resp = requests.get(BA_API_URL, headers=self.headers, params=fallback_params, timeout=12, verify=ca_bundle)
+                            if fb_resp.status_code == 200:
+                                raw_jobs = fb_resp.json().get("ergebnisliste", [])
+                        except Exception:
+                            pass
 
             if progress_callback:
                 progress_callback(f"Bundesagentur API returned {len(raw_jobs)} listings. Parsing...")
@@ -92,8 +118,22 @@ class ArbeitsagenturSource(BaseJobSource):
                     plz = addr.get("plz")
                     full_loc = f"{plz} {city_name}".strip() if plz else city_name
 
-                # Remote / Homeoffice status
-                is_remote = bool(item.get("homeofficemoeglich", False)) or filters.is_remote
+                # Remote / Homeoffice status detection
+                title_lower = title.lower()
+                is_ho = (
+                    bool(item.get("homeofficemoeglich", False)) or
+                    bool(item.get("homeofficetyp")) or
+                    "homeoffice" in title_lower or
+                    "remote" in title_lower or
+                    "mobiles arbeiten" in title_lower or
+                    "telearbeit" in title_lower
+                )
+                
+                # If remote only requested, filter client-side
+                if filters.is_remote and not is_ho:
+                    continue
+
+                is_remote = is_ho or filters.is_remote
 
                 # Working time
                 if item.get("arbeitszeitVollzeit"):

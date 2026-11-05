@@ -3,6 +3,7 @@
 import logging
 import datetime
 import requests
+import certifi
 from bs4 import BeautifulSoup
 from typing import List, Callable, Optional
 from config import ARBEITNOW_API_URL
@@ -18,7 +19,7 @@ class ArbeitnowSource(BaseJobSource):
     def __init__(self):
         super().__init__("Arbeitnow")
         self.headers = {
-            "User-Agent": "JobHunterGermany/1.0 (Mozilla/5.0; Desktop App)",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "Accept": "application/json",
         }
 
@@ -34,17 +35,19 @@ class ArbeitnowSource(BaseJobSource):
         target_kw = filters.keyword.lower().strip()
         kw_terms = [t.strip() for t in target_kw.split() if len(t.strip()) > 1]
         
-        target_loc = (filters.location or "").lower().strip()
+        raw_loc = (filters.location or "").lower().strip()
+        target_loc = raw_loc.split(",")[0].strip()
         is_all_germany = target_loc in ["deutschland", "deutschland (ganzes land)", "germany", "all", ""]
 
         try:
+            ca_bundle = certifi.where()
             # Fetch up to 2 pages (up to 600 listings) to filter relevant jobs
             page_count = 2
             collected_raw = []
             
             for page in range(1, page_count + 1):
                 url = f"{ARBEITNOW_API_URL}?page={page}"
-                resp = requests.get(url, headers=self.headers, timeout=10)
+                resp = requests.get(url, headers=self.headers, timeout=12, verify=ca_bundle)
                 if resp.status_code == 200:
                     data = resp.json()
                     jobs_chunk = data.get("data", [])
@@ -61,7 +64,6 @@ class ArbeitnowSource(BaseJobSource):
                 title = item.get("title") or ""
                 company = item.get("company_name") or "Employer"
                 location = item.get("location") or "Germany"
-                is_remote = bool(item.get("remote", False))
                 tags = item.get("tags") or []
                 raw_desc = item.get("description") or ""
 
@@ -69,20 +71,41 @@ class ArbeitnowSource(BaseJobSource):
                 soup = BeautifulSoup(raw_desc, "html.parser")
                 clean_text = soup.get_text(separator=" ", strip=True)
 
-                searchable_corpus = f"{title.lower()} {' '.join(tags).lower()} {clean_text[:400].lower()}"
+                title_lower = title.lower()
+                tags_lower = " ".join(tags).lower()
+                desc_lower = clean_text.lower()
+                searchable_corpus = f"{title_lower} {tags_lower} {desc_lower}"
 
-                # Match keyword terms
-                if kw_terms and not all(term in searchable_corpus for term in kw_terms):
+                # Match keyword terms flexibly across full description
+                matched_kw = False
+                if target_kw in searchable_corpus:
+                    matched_kw = True
+                elif kw_terms and all(term in searchable_corpus for term in kw_terms):
+                    matched_kw = True
+                elif kw_terms and any(term in title_lower or term in tags_lower for term in kw_terms):
+                    matched_kw = True
+
+                if not matched_kw:
+                    continue
+
+                # Remote status detection
+                is_remote = (
+                    bool(item.get("remote", False)) or
+                    "remote" in location.lower() or
+                    "remote" in title_lower or
+                    "home office" in desc_lower or
+                    "homeoffice" in desc_lower or
+                    "mobiles arbeiten" in desc_lower
+                )
+
+                # Match remote filter
+                if filters.is_remote and not is_remote:
                     continue
 
                 # Match location
                 if not is_all_germany and target_loc:
                     if target_loc not in location.lower() and not (filters.is_remote and is_remote):
                         continue
-
-                # Match remote filter
-                if filters.is_remote and not is_remote:
-                    continue
 
                 # Format date
                 created_at = item.get("created_at")

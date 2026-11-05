@@ -40,10 +40,13 @@ def build():
         "--collect-all", "curl_cffi",
         "--collect-all", "jobspy",
         "--collect-all", "webview",
+        "--collect-all", "certifi",
+        "--collect-all", "requests",
         "--hidden-import", "openpyxl",
         "--hidden-import", "pandas",
         "--hidden-import", "requests",
         "--hidden-import", "bs4",
+        "--hidden-import", "certifi",
         str(BASE_DIR / "main.py")
     ]
 
