@@ -12,14 +12,14 @@ RELEASE_DIR = BASE_DIR / "release"
 STAGING_DIR = RELEASE_DIR / "JobHunterGermany_Installer"
 
 README_TEXT = """===============================================================
-  🇩🇪 JobHunter Germany - Standalone Desktop Application
+  [DE] JobHunter Germany - Standalone Desktop Application
 ===============================================================
 
 HOW TO INSTALL (No Python or server setup required):
 ---------------------------------------------------------------
 1. Double-click "Setup.bat"
 2. The installer will:
-   - Install JobHunter Germany to your local apps directory
+   - Install JobHunter Germany to your chosen directory
    - Create a shortcut on your Windows Desktop
    - Create a shortcut in your Windows Start Menu
    - Automatically launch the application!
@@ -32,7 +32,7 @@ You can launch the app at any time directly from your:
 
 HOW IT WORKS:
 ---------------------------------------------------------------
-- Fill in your desired position and German location (e.g. Berlin, München)
+- Fill in your desired position(s) and German location (e.g. Berlin, München)
 - Click "Find Jobs & Generate Excel"
 - The app aggregates Bundesagentur für Arbeit (Official API), Indeed,
   LinkedIn, Arbeitnow, and identifies direct Workday & Personio ATS links.
@@ -45,7 +45,7 @@ Enjoy your job hunt in Germany!
 
 def package():
     print("=======================================================")
-    print("    Packaging JobHunter Germany Windows Release 🇩🇪    ")
+    print("    Packaging JobHunter Germany Windows Release [DE]   ")
     print("=======================================================")
 
     if not DIST_APP.exists():
@@ -84,7 +84,7 @@ def package():
                 zf.write(full_path, arcname=str(rel_path))
 
     print("\n=======================================================")
-    print("  🎉 Release Package Created Successfully!")
+    print("  [+] Release Package Created Successfully!")
     print("=======================================================")
     print(f"Zip File:      {zip_path}")
     print(f"Installer Dir: {STAGING_DIR}")

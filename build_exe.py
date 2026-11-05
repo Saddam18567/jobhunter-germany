@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 def build():
     print("=======================================================")
-    print("      Building JobHunter Germany Standalone App 🇩🇪    ")
+    print("      Building JobHunter Germany Standalone App [DE]   ")
     print("=======================================================")
     print(f"Platform: {platform.system()} ({platform.machine()})")
     print(f"Python:   {sys.version.split()[0]}")
@@ -61,7 +61,7 @@ def build():
     exe_path = dist_dir / exe_name
 
     print("\n=======================================================")
-    print("  🎉 Build Completed Successfully!")
+    print("  [+] Build Completed Successfully!")
     print("=======================================================")
     print(f"Application directory: {dist_dir}")
     print(f"Executable binary:     {exe_path}")
