@@ -31,7 +31,7 @@
     <!-- Quick Action / Status -->
     <div class="flex items-center space-x-3">
       <button id="btnOpenFolder" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition cursor-pointer">
-        <span>📁 Exports Folder</span>
+        <span>📁 Open Save Folder</span>
       </button>
       <div id="connectionStatus" class="flex items-center space-x-1.5 text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -47,25 +47,28 @@
     <aside class="w-full lg:w-96 border-r border-slate-800 bg-slate-900/60 p-5 overflow-y-auto shrink-0 flex flex-col justify-between">
       <form id="searchForm" class="space-y-4">
         
-        <!-- Job Title / Keyword -->
+        <!-- Job Title / Multiple Keywords -->
         <div>
-          <label for="inputKeyword" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Job Title or Keywords *
-          </label>
+          <div class="flex items-center justify-between mb-1">
+            <label for="inputKeyword" class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Keywords / Positions *
+            </label>
+            <span class="text-[10px] text-blue-400">Comma-separated</span>
+          </div>
           <input 
             type="text" 
             id="inputKeyword" 
             required
-            placeholder="e.g. Python Developer, Data Engineer..." 
+            placeholder="e.g. Python Developer, Data Engineer, DevOps..." 
             value="Python Developer"
             class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
           />
-          <!-- Quick Preset Chips -->
+          <!-- Quick Preset Chips (Click to append/add) -->
           <div class="flex flex-wrap gap-1.5 mt-2">
-            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60" data-kw="Python Developer">Python</button>
-            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60" data-kw="Data Engineer">Data Engineer</button>
-            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60" data-kw="DevOps Engineer">DevOps</button>
-            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60" data-kw="Backend Developer">Backend</button>
+            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60 transition" data-kw="Python Developer">+ Python</button>
+            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60 transition" data-kw="Data Engineer">+ Data Engineer</button>
+            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60 transition" data-kw="DevOps Engineer">+ DevOps</button>
+            <button type="button" class="preset-chip text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60 transition" data-kw="Backend Engineer">+ Backend</button>
           </div>
         </div>
 
@@ -89,6 +92,30 @@
             <button type="button" class="city-chip text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700/50" data-loc="Hamburg">Hamburg</button>
             <button type="button" class="city-chip text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700/50" data-loc="Frankfurt am Main">Frankfurt</button>
           </div>
+        </div>
+
+        <!-- Excel Save Location Picker -->
+        <div>
+          <label for="inputSaveDir" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+            Excel Save Location
+          </label>
+          <div class="flex items-center space-x-2">
+            <input 
+              type="text" 
+              id="inputSaveDir" 
+              readonly
+              placeholder="Select folder where Excel is saved..." 
+              class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none cursor-default truncate"
+            />
+            <button 
+              type="button" 
+              id="btnBrowseSaveDir" 
+              class="px-2.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition cursor-pointer flex items-center space-x-1 whitespace-nowrap"
+            >
+              <span>📁 Browse</span>
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Generated spreadsheets will be saved here automatically.</p>
         </div>
 
         <!-- Radius (Umkreis) & Contract Type in 2 cols -->
@@ -232,7 +259,7 @@
 
       <!-- App Info Footer in Sidebar -->
       <div class="pt-4 mt-4 border-t border-slate-800/80 text-[11px] text-slate-500 text-center">
-        JobHunter Germany v1.0 • Standalone App
+        JobHunter Germany v1.1 • Multi-Keyword & Custom Save
       </div>
     </aside>
 
@@ -290,7 +317,7 @@
           <input 
             type="text" 
             id="filterInput" 
-            placeholder="Instant filter by title, company, or platform..." 
+            placeholder="Instant filter by title, company, or keyword..." 
             class="w-full bg-slate-900 border border-slate-700/80 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <span class="absolute left-2.5 top-2 text-slate-500 text-xs">🔎</span>
@@ -310,7 +337,7 @@
           <button 
             id="btnExportExcel" 
             class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm transition cursor-pointer"
-            title="Download formatted Excel (.xlsx) spreadsheet with hyperlinks"
+            title="Export or re-save Excel spreadsheet"
           >
             <span>📊</span>
             <span>Export to Excel</span>
@@ -324,10 +351,11 @@
         <div class="flex items-center space-x-2.5 text-xs text-emerald-300">
           <span class="text-xl">📊</span>
           <div>
-            <div class="font-semibold text-white">Excel Spreadsheet Automatically Generated!</div>
-            <div class="text-[11px] text-emerald-400/90 flex items-center space-x-1 mt-0.5">
-              <span>Saved as:</span>
-              <span id="excelFileName" class="font-mono bg-emerald-900/60 px-1.5 py-0.5 rounded text-emerald-200">filename.xlsx</span>
+            <div class="font-semibold text-white">Excel Spreadsheet Successfully Generated!</div>
+            <div class="text-[11px] text-emerald-400/90 flex flex-wrap items-center gap-1 mt-0.5">
+              <span>Saved in:</span>
+              <span id="excelFileFolder" class="font-mono bg-emerald-900/60 px-1.5 py-0.5 rounded text-emerald-200">...</span>
+              <span id="excelFileName" class="font-semibold text-white">filename.xlsx</span>
             </div>
           </div>
         </div>
@@ -349,10 +377,10 @@
           </div>
           <h2 class="text-lg font-bold text-white mb-2">Ready to Hunt Jobs in Germany</h2>
           <p class="text-sm text-slate-400 max-w-md mb-4">
-            Select your position, target German location, and filters on the left. The app queries Bundesagentur für Arbeit, LinkedIn, Indeed, classifies direct Workday/Personio ATS links, and automatically outputs a formatted Excel spreadsheet.
+            Enter one or more job titles (separated by comma), target German location, and where to save your Excel file. The app searches Bundesagentur für Arbeit, LinkedIn, Indeed, classifies ATS platforms, and generates your spreadsheet.
           </p>
           <button id="btnQuickStart" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow transition cursor-pointer">
-            Search Python Jobs in Berlin
+            Search: Python Developer, Data Engineer in Berlin
           </button>
         </div>
 
@@ -360,7 +388,7 @@
         <div id="loadingState" class="hidden h-full flex flex-col items-center justify-center text-center p-8">
           <div class="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4"></div>
           <h3 class="text-base font-semibold text-white">Aggregating German Job Listings...</h3>
-          <p id="loadingStatusText" class="text-xs text-slate-400 mt-1 max-w-sm">Querying official Bundesagentur API & JobSpy, building Excel file...</p>
+          <p id="loadingStatusText" class="text-xs text-slate-400 mt-1 max-w-sm">Querying official Bundesagentur API & JobSpy, compiling Excel file...</p>
         </div>
 
         <!-- Results Table -->

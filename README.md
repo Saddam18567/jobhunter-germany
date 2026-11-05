@@ -2,35 +2,29 @@
 
 A modern, standalone desktop application designed specifically for hunting jobs in Germany. It unifies **official German government REST APIs (Bundesagentur für Arbeit)**, legal job scrapers (**JobSpy** for LinkedIn, Indeed, Glassdoor, Google Jobs), **Arbeitnow**, and an intelligent **ATS Detector** (recognizing Workday, Personio, Greenhouse, Lever, and Softgarden direct career portals).
 
-> **No Python or server setup required.** The application is compiled with all dependencies embedded. A one-click installer configures everything and creates your Desktop and Start Menu shortcuts automatically.
+> **Zero Python Setup Required:** The application is packaged with all dependencies embedded. A standalone installer lets you choose your installation location and creates your Desktop and Start Menu shortcuts automatically.
 
 ---
 
-## ✨ Features at a Glance
+## ✨ What's New in v1.1.0
 
-- **Zero Python Setup**: Runs as a self-contained desktop app with embedded runtime.
-- **1-Click Standalone Installer**:
-  - Automatically installs the application into your local programs directory.
-  - Creates a **Desktop Shortcut** (`JobHunter Germany`).
-  - Creates a **Windows Start Menu Shortcut** (`JobHunter Germany`).
-  - Automatically launches the app immediately upon setup!
-- **Automatic Excel Generation**:
-  - Filling the search form and clicking **"Find Jobs & Generate Excel"** automatically gathers the listings, classifies ATS platforms, and generates a formatted Microsoft Excel (`.xlsx`) spreadsheet.
-  - A prominent **"Open in Excel ↗"** button allows you to launch the spreadsheet directly in Microsoft Excel with one click.
-  - No messy CSV files—pure, styled Excel with clickable links (`Apply Link ↗` and `View Listing ↗`), auto-filters, and zebra rows.
-- **Official German Government Directory (REST API)**:
-  - Official Bundesagentur für Arbeit Jobsuche REST API covering all 16 German states, administrative districts, and cities.
-- **JobSpy German Aggregation**:
-  - Indeed Germany (`country_indeed="germany"`), LinkedIn, Glassdoor, and Google Jobs.
-- **ATS Recognition**:
-  - Highlights whether jobs are on **Workday**, **Personio**, **Greenhouse**, **Lever**, **Softgarden**, or official portals, and provides actionable application guidance.
+- 🎯 **Multi-Keyword Search**:
+  - Enter multiple job titles or skills separated by commas, semicolons, or clicking preset chips (e.g. `Python Developer, Data Engineer, DevOps Engineer`).
+  - Searches all platforms concurrently for each keyword, merges duplicates, and includes a **"Matched Keywords"** column in Excel.
+- 📁 **Custom Excel Save Location**:
+  - Choose exactly where generated Excel spreadsheets are saved (e.g., your *Desktop*, *Downloads*, or *Documents* folder).
+  - Built-in `📁 Browse` folder picker saves your folder preference permanently.
+- 💻 **Custom Installation Directory**:
+  - `Setup.bat` prompts you to choose your installation directory (press Enter for default `%LocalAppData%\JobHunterGermany`, type `B` to browse, or enter any custom path).
+- 📊 **Pure Excel Output**:
+  - Automatic generation of formatted Microsoft Excel (`.xlsx`) workbooks with styled headers, clickable application links (`Apply Link ↗`), auto-filters, and zebra striping.
 
 ---
 
 ## 🚀 Standalone Installation on Windows (No Python Needed)
 
-### Step 1: Download or Extract the Release Package
-Extract `JobHunterGermany_Windows_Installer.zip` (located in the [`release/`](file:///data/workspace/job-hunt/release/) folder).
+### Step 1: Download & Extract
+Download **[`JobHunterGermany_Windows_Installer.zip`](https://github.com/Saddam18567/jobhunter-germany/releases)** and extract the zip file.
 
 ### Step 2: Run Setup
 Double-click:
@@ -38,80 +32,60 @@ Double-click:
 Setup.bat
 ```
 
-### What happens automatically:
-1. Copies all files and embedded libraries into `%LocalAppData%\JobHunterGermany`.
-2. Creates a **Desktop Shortcut** on your Windows Desktop: `JobHunter Germany`.
-3. Creates a **Windows Start Menu Shortcut**: `JobHunter Germany`.
-4. Automatically launches the application!
+### Step 3: Choose Installation Location
+When prompted in the terminal:
+* Press **[ENTER]** to install to the default location (`%LocalAppData%\JobHunterGermany`).
+* Type **[B]** to open the Windows folder browser dialog and pick a folder visually.
+* Or type any custom folder path (e.g. `D:\Software\JobHunterGermany`).
 
-### For all subsequent runs:
-Just double-click the **JobHunter Germany** icon on your Desktop or search for it in your Windows Start Menu!
+The installer will:
+1. Copy all application files to your chosen path.
+2. Create a **Desktop Shortcut**: `JobHunter Germany.lnk`.
+3. Create a **Windows Start Menu Shortcut**: `JobHunter Germany.lnk`.
+4. Automatically launch the application!
 
 ---
 
-## 🛠️ How It Works
+## 🖥️ How It Works
 
-1. **Open the App**: Click the Desktop shortcut.
-2. **Fill in the Search Form**:
-   - **Job Title / Keyword**: e.g., *Python Developer*, *Data Engineer*, *DevOps*.
-   - **German Location**: e.g., *Berlin*, *München*, *Hamburg*, *Frankfurt*, or *All Germany*.
+1. **Open the App**: Click the Desktop shortcut or launch from Windows Start Menu.
+2. **Configure Your Search**:
+   - **Job Titles / Keywords**: Enter one or more comma-separated keywords (e.g. `Python Developer, Data Engineer`) or click the `+` preset chips.
+   - **Location**: Enter a German city (e.g. `Berlin`, `München`) or click `All Germany`.
+   - **Excel Save Location**: Click `📁 Browse` to pick your preferred destination folder.
    - **Radius (Umkreis)**: `10 km`, `25 km`, `50 km`, `100 km`, `200 km`.
-   - **Contract Type**: *Full-time (Vollzeit)*, *Part-time (Teilzeit)*, *Contract / Freelance*.
-   - **Remote Toggle**: Filter positions with home-office flexibility.
-   - **Date Posted**: *Past 24 Hours*, *3 Days*, *7 Days*, *14 Days*, *30 Days*.
-   - **Platforms**: Toggle Bundesagentur für Arbeit, Indeed, LinkedIn, Arbeitnow, Glassdoor, Google Jobs.
+   - **Contract Type & Remote**: Filter by *Vollzeit*, *Teilzeit*, or *Remote / Home Office*.
+   - **Platforms**: Toggle Bundesagentur für Arbeit, Indeed Germany, LinkedIn, Arbeitnow, Glassdoor, Google Jobs.
 3. **Click "Find Jobs & Generate Excel"**:
-   - The app searches all active platforms in parallel.
-   - Identifies direct ATS systems (Workday, Personio, etc.).
-   - Merges identical job postings.
-   - **Automatically generates your Excel spreadsheet** in the `exports/` folder.
-4. **View & Open**:
-   - Click the green **"Open in Excel ↗"** banner to launch Microsoft Excel directly.
-   - Or browse and filter the results live in the desktop table.
+   - Gathers listings from all platforms for all specified keywords.
+   - Identifies direct ATS systems (**Workday**, **Personio**, **Greenhouse**, **Lever**, **Softgarden**).
+   - Merges identical job postings and tags which keyword(s) matched.
+   - Automatically writes the formatted `.xlsx` workbook to your chosen save location.
+4. **Open Spreadsheet**:
+   - Click **"Open in Excel ↗"** to launch Microsoft Excel immediately.
 
 ---
 
-## 📦 For Developers: Building the Standalone Packages
-
-If you are modifying code and want to rebuild the standalone Windows packages:
-
-```bash
-# 1. Compile the PyInstaller standalone binary
-python build_exe.py
-
-# 2. Package into the distribution zip with Setup.bat and shortcuts
-python package_release.py
-```
-
-This creates:
-- `release/JobHunterGermany_Windows_Installer.zip` (ready for end users on laptops without Python).
-- `installer/installer.iss` (ready for Inno Setup compiler if you want a `.exe` installer wizard).
-
----
-
-## 📁 Architecture Overview
+## 📁 Repository Structure
 
 ```
 job-hunt/
-├── Setup.bat                   # 1-Click Windows installer (no Python needed)
+├── Setup.bat                   # Standalone 1-click Windows installer
 ├── release/
-│   └── JobHunterGermany_Windows_Installer.zip  # Ready-to-distribute release package
+│   └── JobHunterGermany_Windows_Installer.zip  # Distribution installer zip
 ├── installer/
-│   ├── install.ps1             # Windows installer script (creates shortcuts & launches)
+│   ├── install.ps1             # Interactive installer (custom install path & shortcuts)
 │   └── installer.iss           # Inno Setup wizard configuration
-├── main.py                     # App entry point
-├── build_exe.py                # PyInstaller standalone packager
-├── package_release.py          # Release zip packager
+├── main.py                     # Application entry point (GUI + CLI)
 ├── config.py                   # Paths, API keys, ATS signatures
 ├── core/
-│   ├── aggregator.py           # Parallel multi-source search
+│   ├── aggregator.py           # Concurrent multi-keyword & multi-source search
 │   ├── ats_detector.py         # Workday, Personio, Greenhouse ATS classifier
-│   ├── deduplicator.py         # Cross-platform job deduplication
-│   ├── exporter.py             # Formatted Excel (.xlsx) generator with hyperlinks
+│   ├── deduplicator.py         # Cross-platform job deduplication & keyword merging
+│   ├── exporter.py             # Formatted Excel (.xlsx) generator with custom save dir
 │   ├── models.py               # Data models
 │   └── sources/                # API clients (Arbeitsagentur, Arbeitnow, JobSpy)
-├── exports/                    # Auto-generated Excel sheets
-└── ui/
+├── ui/
     ├── app.py                  # PyWebView window & API controller
-    └── static/                 # HTML/JS/CSS frontend
+    └── static/                 # HTML5/JS/CSS frontend with folder picker
 ```

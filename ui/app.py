@@ -10,7 +10,7 @@ import threading
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import webview
 
@@ -30,12 +30,43 @@ class JobHunterAPI:
         self.last_keyword: str = "jobs"
         self.last_location: str = "germany"
         self.last_excel_path: str = ""
+        self.active_save_dir: str = self.get_default_save_dir()
+        self.window = None
+
+    def get_default_save_dir(self) -> str:
+        """Default save location: user's Downloads or Exports folder."""
+        user_downloads = Path.home() / "Downloads"
+        if user_downloads.exists():
+            return str(user_downloads.resolve())
+        return str(EXPORTS_DIR.resolve())
+
+    def select_save_directory(self) -> str:
+        """Opens native OS folder picker to let user choose where Excel spreadsheets are saved."""
+        try:
+            target_win = self.window or (webview.windows[0] if webview.windows else None)
+            if target_win:
+                result = target_win.create_file_dialog(
+                    webview.FOLDER_DIALOG,
+                    directory=self.active_save_dir
+                )
+                if result and len(result) > 0:
+                    chosen = result[0]
+                    self.active_save_dir = chosen
+                    return chosen
+        except Exception as e:
+            logger.warning(f"Native folder dialog error: {e}")
+
+        return self.active_save_dir
 
     def search_jobs(self, filters_dict: Dict[str, Any]) -> Dict[str, Any]:
         """Search jobs across German APIs and scrapers, and automatically generate Excel sheet."""
         try:
             kw = filters_dict.get("keyword", "")
             loc = filters_dict.get("location", "Deutschland")
+            save_dir = filters_dict.get("save_directory") or self.active_save_dir
+            if save_dir:
+                self.active_save_dir = save_dir
+
             self.last_keyword = kw
             self.last_location = loc
 
@@ -47,17 +78,23 @@ class JobHunterAPI:
                 job_type=filters_dict.get("job_type") or None,
                 results_per_source=int(filters_dict.get("results_per_source", 25)),
                 sources=filters_dict.get("sources", ["arbeitsagentur", "indeed", "linkedin"]),
-                date_posted_days=int(filters_dict["date_posted_days"]) if filters_dict.get("date_posted_days") else None
+                date_posted_days=int(filters_dict["date_posted_days"]) if filters_dict.get("date_posted_days") else None,
+                save_directory=self.active_save_dir
             )
 
             self.current_jobs = self.aggregator.search(filters)
             stats = self.aggregator.calculate_stats(self.current_jobs)
 
-            # Automatically generate Excel sheet upon search completion
+            # Automatically generate Excel sheet in user's chosen folder
             excel_path = ""
             excel_filename = ""
             if self.current_jobs:
-                default_path = JobExporter.generate_default_path(self.last_keyword, self.last_location, "xlsx")
+                default_path = JobExporter.generate_default_path(
+                    self.last_keyword,
+                    self.last_location,
+                    "xlsx",
+                    target_dir=self.active_save_dir
+                )
                 excel_path = JobExporter.export_excel(self.current_jobs, default_path)
                 excel_filename = Path(excel_path).name
                 self.last_excel_path = excel_path
@@ -68,6 +105,7 @@ class JobHunterAPI:
                 "stats": stats,
                 "excel_path": excel_path,
                 "excel_filename": excel_filename,
+                "save_directory": self.active_save_dir,
                 "download_url": f"/download/{excel_filename}" if excel_filename else ""
             }
         except Exception as e:
@@ -79,15 +117,17 @@ class JobHunterAPI:
                 "stats": {},
                 "excel_path": "",
                 "excel_filename": "",
+                "save_directory": self.active_save_dir,
                 "download_url": ""
             }
 
-    def export_excel_manual(self) -> str:
-        """Export current jobs to Excel and return absolute file path."""
+    def export_excel_manual(self, custom_save_dir: str = "") -> str:
+        """Export current jobs to Excel in specified directory and return file path."""
         if not self.current_jobs:
             raise ValueError("No job listings available to export.")
 
-        default_path = JobExporter.generate_default_path(self.last_keyword, self.last_location, "xlsx")
+        target_dir = custom_save_dir or self.active_save_dir
+        default_path = JobExporter.generate_default_path(self.last_keyword, self.last_location, "xlsx", target_dir=target_dir)
         path = JobExporter.export_excel(self.current_jobs, default_path)
         self.last_excel_path = path
         return path
@@ -116,9 +156,9 @@ class JobHunterAPI:
         if url:
             webbrowser.open(url)
 
-    def open_exports_folder(self) -> str:
-        """Open the exports folder in Windows Explorer, macOS Finder, or Linux file manager."""
-        folder_path = str(EXPORTS_DIR.resolve())
+    def open_exports_folder(self, folder_override: str = "") -> str:
+        """Open the save folder in Windows Explorer, macOS Finder, or Linux file manager."""
+        folder_path = folder_override or self.active_save_dir or str(EXPORTS_DIR.resolve())
         system = platform.system()
         try:
             if system == "Windows":
@@ -153,9 +193,27 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(result).encode("utf-8"))
 
+        elif self.path == "/api/select_folder":
+            chosen = self.api.select_save_directory()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True, "path": chosen}).encode("utf-8"))
+
+        elif self.path == "/api/get_save_dir":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True, "path": self.api.active_save_dir}).encode("utf-8"))
+
         elif self.path == "/api/export_excel":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            data = json.loads(body) if body else {}
+            custom_dir = data.get("save_directory", "")
+
             try:
-                filepath = self.api.export_excel_manual()
+                filepath = self.api.export_excel_manual(custom_dir)
                 filename = Path(filepath).name
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -190,7 +248,11 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
 
         elif self.path == "/api/open_folder":
-            path = self.api.open_exports_folder()
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            data = json.loads(body) if body else {}
+            folder = data.get("path", "")
+            path = self.api.open_exports_folder(folder)
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -201,7 +263,11 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/download/"):
             filename = self.path[len("/download/"):]
-            filepath = EXPORTS_DIR / filename
+            # Look in active save dir or EXPORTS_DIR
+            filepath = Path(self.api.active_save_dir) / filename
+            if not filepath.exists():
+                filepath = EXPORTS_DIR / filename
+
             if filepath.exists() and filepath.is_file():
                 self.send_response(200)
                 self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -247,10 +313,11 @@ def run_desktop_app(force_browser: bool = False, port: int = 5892):
                 url=url,
                 js_api=api,
                 width=1280,
-                height=840,
+                height=860,
                 min_size=(960, 640),
                 confirm_close=False,
             )
+            api.window = window
             webview.start(debug=False)
             return
         except Exception as e:

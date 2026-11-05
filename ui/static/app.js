@@ -1,8 +1,6 @@
 /**
- * JobHunter Germany - Frontend Application Logic
- * Supports both PyWebView desktop window (window.pywebview.api)
- * and fallback local HTTP API (fetch('/api/...')).
- * Exclusively generates and exports to Microsoft Excel (.xlsx).
+ * JobHunter Germany - Frontend Application Logic (v1.1)
+ * Multi-keyword search support & customizable Excel save location.
  */
 
 let allJobs = [];
@@ -15,6 +13,9 @@ let currentExcelDownloadUrl = "";
 const searchForm = document.getElementById("searchForm");
 const inputKeyword = document.getElementById("inputKeyword");
 const inputLocation = document.getElementById("inputLocation");
+const inputSaveDir = document.getElementById("inputSaveDir");
+const btnBrowseSaveDir = document.getElementById("btnBrowseSaveDir");
+
 const selectDistance = document.getElementById("selectDistance");
 const selectJobType = document.getElementById("selectJobType");
 const selectDate = document.getElementById("selectDate");
@@ -43,6 +44,7 @@ const resultsTableContainer = document.getElementById("resultsTableContainer");
 const resultsTableBody = document.getElementById("resultsTableBody");
 
 const excelReadyBanner = document.getElementById("excelReadyBanner");
+const excelFileFolder = document.getElementById("excelFileFolder");
 const excelFileName = document.getElementById("excelFileName");
 const btnOpenExcelDirect = document.getElementById("btnOpenExcelDirect");
 const btnExportExcel = document.getElementById("btnExportExcel");
@@ -54,12 +56,39 @@ const toastMessage = document.getElementById("toastMessage");
 const toastIcon = document.getElementById("toastIcon");
 
 // Initialize PyWebView listener
-window.addEventListener("pywebviewready", () => {
+window.addEventListener("pywebviewready", async () => {
   isPyWebView = true;
   document.getElementById("connectionStatus").innerHTML = `
     <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
     <span>Desktop App Mode</span>
   `;
+  initSaveDirectory();
+});
+
+// Initialize Save Directory
+async function initSaveDirectory() {
+  const saved = localStorage.getItem("jobhunter_save_dir");
+  if (saved) {
+    inputSaveDir.value = saved;
+  } else {
+    try {
+      if (isPyWebView && window.pywebview && window.pywebview.api && window.pywebview.api.get_default_save_dir) {
+        const defaultDir = await window.pywebview.api.get_default_save_dir();
+        inputSaveDir.value = defaultDir;
+      } else {
+        const resp = await fetch("/api/get_save_dir");
+        const data = await resp.json();
+        inputSaveDir.value = data.path || "./exports";
+      }
+    } catch (e) {
+      inputSaveDir.value = "./exports";
+    }
+  }
+}
+
+// Ensure init happens on regular browser mode as well
+document.addEventListener("DOMContentLoaded", () => {
+  initSaveDirectory();
 });
 
 // Toast notification helper
@@ -75,10 +104,20 @@ function showToast(message, icon = "ℹ️", duration = 5000) {
   }, duration);
 }
 
-// Preset Chips clicks
+// Preset Chips clicks (supports appending multiple keywords)
 document.querySelectorAll(".preset-chip").forEach(btn => {
   btn.addEventListener("click", () => {
-    inputKeyword.value = btn.getAttribute("data-kw");
+    const kw = btn.getAttribute("data-kw");
+    const current = inputKeyword.value.trim();
+    if (!current) {
+      inputKeyword.value = kw;
+    } else {
+      const parts = current.split(",").map(p => p.trim());
+      if (!parts.includes(kw)) {
+        inputKeyword.value = `${current}, ${kw}`;
+      }
+    }
+    inputKeyword.focus();
   });
 });
 
@@ -89,11 +128,39 @@ document.querySelectorAll(".city-chip").forEach(btn => {
   });
 });
 
+// Browse Save Directory Button
+if (btnBrowseSaveDir) {
+  btnBrowseSaveDir.addEventListener("click", async () => {
+    try {
+      let chosen = "";
+      if (isPyWebView && window.pywebview && window.pywebview.api && window.pywebview.api.select_save_directory) {
+        chosen = await window.pywebview.api.select_save_directory();
+      } else {
+        const resp = await fetch("/api/select_folder", { method: "POST" });
+        const data = await resp.json();
+        chosen = data.path;
+      }
+
+      if (chosen) {
+        inputSaveDir.value = chosen;
+        localStorage.setItem("jobhunter_save_dir", chosen);
+        showToast("Save location set to: " + chosen, "📁");
+      }
+    } catch (e) {
+      const promptVal = prompt("Enter full folder path to save Excel files:", inputSaveDir.value);
+      if (promptVal) {
+        inputSaveDir.value = promptVal.trim();
+        localStorage.setItem("jobhunter_save_dir", promptVal.trim());
+      }
+    }
+  });
+}
+
 // Quick start button in welcome state
 const btnQuickStart = document.getElementById("btnQuickStart");
 if (btnQuickStart) {
   btnQuickStart.addEventListener("click", () => {
-    inputKeyword.value = "Python Developer";
+    inputKeyword.value = "Python Developer, Data Engineer";
     inputLocation.value = "Berlin";
     searchForm.dispatchEvent(new Event("submit"));
   });
@@ -144,16 +211,21 @@ if (btnOpenExcelDirect) {
 // Open exports folder
 if (btnOpenFolder) {
   btnOpenFolder.addEventListener("click", async () => {
+    const saveDir = inputSaveDir.value.trim();
     try {
       if (isPyWebView && window.pywebview && window.pywebview.api && window.pywebview.api.open_exports_folder) {
-        await window.pywebview.api.open_exports_folder();
+        await window.pywebview.api.open_exports_folder(saveDir);
       } else {
-        const resp = await fetch("/api/open_folder", { method: "POST" });
+        const resp = await fetch("/api/open_folder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: saveDir })
+        });
         const res = await resp.json();
-        showToast(res.message || "Exports folder opened", "📁");
+        showToast("Opened: " + (res.path || saveDir), "📁");
       }
     } catch (e) {
-      showToast("Exports saved in: ./exports", "📁");
+      showToast("Files saved in: " + saveDir, "📁");
     }
   });
 }
@@ -173,6 +245,7 @@ function getFormFilters() {
     date_posted_days: selectDate.value ? parseInt(selectDate.value) : null,
     results_per_source: parseInt(selectLimit.value) || 25,
     is_remote: chkRemote.checked,
+    save_directory: inputSaveDir.value.trim() || null,
     sources: sources.length > 0 ? sources : ["arbeitsagentur", "indeed", "linkedin"]
   };
 }
@@ -183,25 +256,29 @@ searchForm.addEventListener("submit", async (e) => {
   const filters = getFormFilters();
 
   if (!filters.keyword) {
-    showToast("Please enter a job title or keyword.", "⚠️");
+    showToast("Please enter at least one job title or keyword.", "⚠️");
     return;
   }
+
+  // Count keywords
+  const kwList = filters.keyword.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
+  const kwCount = kwList.length;
 
   // Set Loading UI
   welcomeState.classList.add("hidden");
   resultsTableContainer.classList.add("hidden");
   excelReadyBanner.classList.add("hidden");
   loadingState.classList.remove("hidden");
-  loadingStatusText.textContent = `Searching for '${filters.keyword}' in ${filters.location} and generating Excel sheet...`;
+  loadingStatusText.textContent = `Searching for ${kwCount} keyword(s) across Germany and compiling Excel...`;
 
   progressContainer.classList.remove("hidden");
   progressBar.style.width = "20%";
-  progressMessage.innerHTML = `<span>Querying German APIs and scrapers...</span>`;
+  progressMessage.innerHTML = `<span>Querying German platforms for: ${escapeHtml(kwList.join(', '))}...</span>`;
 
   btnSearch.disabled = true;
   btnSearch.classList.add("opacity-60", "cursor-not-allowed");
   searchIcon.textContent = "⏳";
-  searchText.textContent = "Scanning & Building Excel...";
+  searchText.textContent = "Searching & Building Excel...";
 
   try {
     let resultData = null;
@@ -232,15 +309,16 @@ searchForm.addEventListener("submit", async (e) => {
         currentExcelPath = resultData.excel_path;
         currentExcelDownloadUrl = resultData.download_url || "";
         excelFileName.textContent = resultData.excel_filename;
+        excelFileFolder.textContent = resultData.save_directory || inputSaveDir.value;
         excelReadyBanner.classList.remove("hidden");
-        showToast(`Found ${allJobs.length} jobs! Excel generated: ${resultData.excel_filename}`, "📊", 6000);
+        showToast(`Found ${allJobs.length} jobs! Saved to: ${resultData.excel_filename}`, "📊", 6000);
       } else {
         showToast(`Found ${allJobs.length} jobs in Germany!`, "🎉");
       }
 
-      footerInfo.textContent = `Showing ${allJobs.length} unique listings for '${filters.keyword}' (${filters.location}). Excel sheet generated.`;
+      footerInfo.textContent = `Displaying ${allJobs.length} unique listings across ${kwCount} keyword(s). Excel file generated.`;
     } else {
-      throw new Error("No response data received.");
+      throw new Error(resultData?.error || "No response received.");
     }
 
   } catch (err) {
@@ -314,7 +392,7 @@ function renderResults(jobs) {
       <tr>
         <td colspan="5" class="py-12 text-center text-slate-400">
           <p class="text-sm font-medium">No matching jobs found with the current filters.</p>
-          <p class="text-xs text-slate-500 mt-1">Try broadening your keyword, increasing search radius, or clearing filter chips.</p>
+          <p class="text-xs text-slate-500 mt-1">Try broadening your keywords or increasing search radius.</p>
         </td>
       </tr>
     `;
@@ -326,6 +404,7 @@ function renderResults(jobs) {
     const isDirectAts = job.application_type === "Direct ATS";
     const applyUrl = job.direct_apply_url || job.job_url;
     const foundPlatforms = (job.found_on && job.found_on.length > 0) ? job.found_on.join(", ") : job.source_platform;
+    const matchedKws = (job.matched_keywords && job.matched_keywords.length > 0) ? job.matched_keywords : [];
 
     return `
       <tr class="hover:bg-slate-800/40 transition group ${isDirectAts ? 'bg-blue-950/10' : ''}">
@@ -341,6 +420,14 @@ function renderResults(jobs) {
             <span>•</span>
             <span class="text-slate-500" title="Found on: ${escapeHtml(foundPlatforms)}">Found: ${escapeHtml(foundPlatforms)}</span>
           </div>
+
+          <!-- Matched Keywords badges -->
+          ${matchedKws.length > 0 ? `
+            <div class="flex flex-wrap gap-1 mt-1">
+              ${matchedKws.map(k => `<span class="px-1.5 py-0.2 rounded text-[10px] bg-blue-900/40 text-blue-300 border border-blue-700/50">🔑 ${escapeHtml(k)}</span>`).join('')}
+            </div>
+          ` : ''}
+
           ${job.description_snippet ? `
             <p class="text-[11px] text-slate-500 line-clamp-1 mt-1">${escapeHtml(job.description_snippet)}</p>
           ` : ''}
@@ -446,7 +533,8 @@ function applyFilters(query, tabFilter) {
       const matchComp = (j.company || "").toLowerCase().includes(query);
       const matchLoc = (j.location || "").toLowerCase().includes(query);
       const matchPlatform = (j.application_platform || "").toLowerCase().includes(query);
-      return matchTitle || matchComp || matchLoc || matchPlatform;
+      const matchKws = (j.matched_keywords || []).some(k => k.toLowerCase().includes(query));
+      return matchTitle || matchComp || matchLoc || matchPlatform || matchKws;
     });
   }
 
@@ -466,11 +554,16 @@ btnExportExcel.addEventListener("click", async () => {
   btnExportExcel.textContent = "Generating...";
 
   try {
+    const saveDir = inputSaveDir.value.trim();
     let filePath = "";
     if (isPyWebView && window.pywebview && window.pywebview.api && window.pywebview.api.export_excel_manual) {
-      filePath = await window.pywebview.api.export_excel_manual();
+      filePath = await window.pywebview.api.export_excel_manual(saveDir);
     } else {
-      const resp = await fetch("/api/export_excel", { method: "POST" });
+      const resp = await fetch("/api/export_excel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ save_directory: saveDir })
+      });
       const data = await resp.json();
       filePath = data.path || "";
       if (data.download_url) {

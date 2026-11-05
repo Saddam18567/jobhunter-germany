@@ -1,5 +1,5 @@
 # PowerShell Standalone Installer for JobHunter Germany
-# Works on all Windows 10/11 laptops without requiring Python or admin rights
+# Allows the user to select their custom installation directory
 
 $ErrorActionPreference = "Stop"
 
@@ -29,14 +29,52 @@ if (-not $SourceDir) {
     exit 1
 }
 
-$InstallDir = "$env:LOCALAPPDATA\JobHunterGermany"
+# --- Prompt User for Installation Directory ---
+$DefaultDir = "$env:LOCALAPPDATA\JobHunterGermany"
+Write-Host "Choose where to install JobHunter Germany:" -ForegroundColor White
+Write-Host "Default location: $DefaultDir" -ForegroundColor Gray
+Write-Host "Press [ENTER] to use default, type [B] to browse folder, or type a custom path:" -ForegroundColor Yellow
+$userChoice = Read-Host "Install Path"
+
+$InstallDir = $DefaultDir
+
+if ([string]::IsNullOrWhiteSpace($userChoice)) {
+    $InstallDir = $DefaultDir
+} elseif ($userChoice.Trim().ToUpper() -eq "B") {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+        $folderBrowser.Description = "Select Installation Folder for JobHunter Germany"
+        $folderBrowser.ShowNewFolderButton = $true
+        $folderBrowser.SelectedPath = $DefaultDir
+
+        if ($folderBrowser.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK -and -not [string]::IsNullOrWhiteSpace($folderBrowser.SelectedPath)) {
+            $selected = $folderBrowser.SelectedPath.Trim()
+            if (-not $selected.ToLower().EndsWith("jobhuntergermany")) {
+                $InstallDir = Join-Path $selected "JobHunterGermany"
+            } else {
+                $InstallDir = $selected
+            }
+        } else {
+            Write-Host "No folder selected. Using default location." -ForegroundColor Gray
+            $InstallDir = $DefaultDir
+        }
+    } catch {
+        Write-Host "Folder dialog unavailable. Using default location." -ForegroundColor Gray
+        $InstallDir = $DefaultDir
+    }
+} else {
+    $InstallDir = $userChoice.Trim().Trim('"').Trim("'")
+}
+
+Write-Host ""
 Write-Host "[1/4] Installing application to: $InstallDir ..." -ForegroundColor Green
 
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 }
 
-# Copy files
+# Copy files into chosen directory
 Copy-Item -Path "$SourceDir\*" -Destination $InstallDir -Recurse -Force
 Write-Host "      Files copied successfully." -ForegroundColor Gray
 

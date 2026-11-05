@@ -79,6 +79,11 @@ class Deduplicator:
                     if tag and tag not in existing.tags:
                         existing.tags.append(tag)
 
+                # Combine matched keywords
+                for kw in job.matched_keywords:
+                    if kw and kw not in existing.matched_keywords:
+                        existing.matched_keywords.append(kw)
+
                 # Keep remote flag if either has it
                 if job.is_remote:
                     existing.is_remote = True

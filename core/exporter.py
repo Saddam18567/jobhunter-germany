@@ -1,4 +1,4 @@
-"""Export job listings to styled Excel (.xlsx) spreadsheets and UTF-8 CSV files."""
+"""Export job listings to styled Excel (.xlsx) spreadsheets."""
 
 import datetime
 import re
@@ -14,19 +14,28 @@ from core.models import JobListing
 
 def sanitize_filename(name: str) -> str:
     """Remove invalid characters for Windows/Linux filenames."""
-    return re.sub(r'[\\/*?:"<>| ]', '_', name)
+    cleaned = re.sub(r'[\\/*?:"<>|,;]+', '_', name)
+    return cleaned[:40].strip('_')
 
 class JobExporter:
-    """Handles Excel and CSV exports with styling and direct links."""
+    """Handles Excel exports with styling, direct links, and custom save folders."""
 
     @staticmethod
-    def generate_default_path(keyword: str, location: str, ext: str = "xlsx") -> Path:
-        """Create a timestamped export filepath in exports/ directory."""
+    def generate_default_path(keyword: str, location: str, ext: str = "xlsx", target_dir: Optional[Union[Path, str]] = None) -> Path:
+        """Create a timestamped export filepath in target_dir or exports/ directory."""
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_kw = sanitize_filename(keyword or "all_jobs")
         safe_loc = sanitize_filename(location or "germany")
         filename = f"jobs_germany_{safe_kw}_{safe_loc}_{ts}.{ext}"
-        return EXPORTS_DIR / filename
+        
+        folder = Path(target_dir) if target_dir else EXPORTS_DIR
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            folder = EXPORTS_DIR
+            folder.mkdir(parents=True, exist_ok=True)
+
+        return folder / filename
 
     @staticmethod
     def to_dataframe(listings: List[JobListing]) -> pd.DataFrame:
@@ -35,11 +44,14 @@ class JobExporter:
         for job in listings:
             platforms_str = ", ".join(job.found_on) if job.found_on else job.source_platform
             tags_str = ", ".join(job.tags) if job.tags else ""
+            matched_kw_str = ", ".join(job.matched_keywords) if job.matched_keywords else ""
+
             rows.append({
                 "Job Title": job.title,
                 "Company": job.company,
                 "Location": job.location,
                 "Remote / Home Office": "Yes (Remote / Hybrid)" if job.is_remote else "On-Site",
+                "Matched Keywords": matched_kw_str,
                 "Application Platform": job.application_platform,
                 "Application Type": job.application_type,
                 "How to Apply": job.how_to_apply,
@@ -55,28 +67,12 @@ class JobExporter:
         return pd.DataFrame(rows)
 
     @classmethod
-    def export_csv(cls, listings: List[JobListing], output_path: Optional[Path | str] = None) -> str:
-        """Export listings to CSV with UTF-8 BOM encoding for Excel compatibility."""
-        if not output_path:
-            kw = listings[0].title if listings else "search"
-            loc = listings[0].city if listings else "de"
-            output_path = cls.generate_default_path(kw, loc, "csv")
-        
-        path_obj = Path(output_path)
-        path_obj.parent.mkdir(parents=True, exist_ok=True)
-
-        df = cls.to_dataframe(listings)
-        # Use utf-8-sig so German characters display seamlessly in Excel on Windows
-        df.to_csv(path_obj, index=False, encoding="utf-8-sig")
-        return str(path_obj.resolve())
-
-    @classmethod
-    def export_excel(cls, listings: List[JobListing], output_path: Optional[Path | str] = None) -> str:
+    def export_excel(cls, listings: List[JobListing], output_path: Optional[Union[Path, str]] = None, target_dir: Optional[Union[Path, str]] = None) -> str:
         """Export listings to a styled Microsoft Excel (.xlsx) workbook with hyperlinks."""
         if not output_path:
-            kw = listings[0].title if listings else "search"
+            kw = ", ".join(set(k for j in listings for k in j.matched_keywords)) if listings else "search"
             loc = listings[0].city if listings else "de"
-            output_path = cls.generate_default_path(kw, loc, "xlsx")
+            output_path = cls.generate_default_path(kw, loc, "xlsx", target_dir=target_dir)
         
         path_obj = Path(output_path)
         path_obj.parent.mkdir(parents=True, exist_ok=True)
@@ -150,7 +146,6 @@ class JobExporter:
                 val_str = str(cell.value or "")
                 if len(val_str) > max_len:
                     max_len = len(val_str)
-            # Set bounded width
             ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 45)
 
         # Enable Excel Auto-Filter on header row
