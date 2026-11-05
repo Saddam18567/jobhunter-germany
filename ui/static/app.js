@@ -181,23 +181,31 @@ async function launchExcelFile(targetPath) {
   try {
     if (isPyWebView && window.pywebview && window.pywebview.api && window.pywebview.api.open_excel_file) {
       await window.pywebview.api.open_excel_file(targetPath || currentExcelPath);
+      showToast("Launching Excel spreadsheet...", "📊");
     } else {
-      const resp = await fetch("/api/open_file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: targetPath || currentExcelPath })
-      });
-      const data = await resp.json();
-      if (!data.success && currentExcelDownloadUrl) {
-        window.open(currentExcelDownloadUrl, "_blank");
+      // In browser / mobile mode, trigger direct download so mobile OS opens it
+      if (currentExcelDownloadUrl) {
+        window.location.href = currentExcelDownloadUrl;
+        showToast("Downloading Excel spreadsheet to your device...", "📥");
+      } else {
+        const resp = await fetch("/api/open_file", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: targetPath || currentExcelPath })
+        });
+        const data = await resp.json();
+        if (data.success) {
+          showToast("Excel spreadsheet opened on host.", "📊");
+        } else if (currentExcelDownloadUrl) {
+          window.location.href = currentExcelDownloadUrl;
+        }
       }
     }
-    showToast("Launching Excel spreadsheet...", "📊");
   } catch (e) {
     if (currentExcelDownloadUrl) {
-      window.open(currentExcelDownloadUrl, "_blank");
+      window.location.href = currentExcelDownloadUrl;
     } else {
-      showToast("Could not open file automatically: " + e.message, "⚠️");
+      showToast("Could not open file: " + e.message, "⚠️");
     }
   }
 }
@@ -567,7 +575,7 @@ btnExportExcel.addEventListener("click", async () => {
       const data = await resp.json();
       filePath = data.path || "";
       if (data.download_url) {
-        window.open(data.download_url, "_blank");
+        window.location.href = data.download_url;
       }
     }
 

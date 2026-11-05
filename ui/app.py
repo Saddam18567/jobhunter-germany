@@ -285,23 +285,23 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
         pass
 
 
-def start_http_server(port: int = 5892) -> HTTPServer:
+def start_http_server(host: str = "0.0.0.0", port: int = 5892) -> HTTPServer:
     """Start local background HTTP server."""
-    server = HTTPServer(("127.0.0.1", port), AppRequestHandler)
+    server = HTTPServer((host, port), AppRequestHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server
 
 
-def run_desktop_app(force_browser: bool = False, port: int = 5892):
+def run_desktop_app(force_browser: bool = False, host: str = "0.0.0.0", port: int = 5892):
     """
     Launch JobHunter Germany desktop app.
     Uses PyWebView native desktop window when available (e.g. on Windows with WebView2),
-    or falls back gracefully to opening the user's default browser.
+    or falls back gracefully to opening the user's default browser or serving over HTTP.
     """
     api = AppRequestHandler.api
-    start_http_server(port=port)
-    url = f"http://127.0.0.1:{port}/"
+    start_http_server(host=host, port=port)
+    url = f"http://localhost:{port}/"
 
     can_open_webview = (not force_browser) and (webview.guilib is not None or platform.system() in ["Windows", "Darwin"])
 
