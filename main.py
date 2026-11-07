@@ -109,11 +109,69 @@ def run_cli_mode(args):
         xlsx_file = JobExporter.export_excel(jobs)
         print(f"[+] Excel (.xlsx) generated: {xlsx_file}")
 
+def run_internal_smoke_test(host: str = "127.0.0.1", port: int = 5892) -> bool:
+    """Run an automated internal self-test of the binary, static assets, and API server."""
+    import urllib.request
+    import json
+    from config import STATIC_DIR, EXPORTS_DIR
+    from ui.app import start_http_server
+
+    print("=======================================================")
+    print("      JobHunter Germany - Internal Smoke Test          ")
+    print("=======================================================")
+    print(f"Static Directory:  {STATIC_DIR}")
+    print(f"Exports Directory: {EXPORTS_DIR}")
+
+    index_file = STATIC_DIR / "index.html"
+    if not index_file.exists():
+        print(f"[FAIL] index.html not found in {STATIC_DIR}")
+        return False
+    print("[+] Static UI assets verified.")
+
+    try:
+        server, actual_port = start_http_server(host=host, port=port)
+        print(f"[+] Local HTTP server started on http://{host}:{actual_port}/")
+
+        # 1. Test GET /
+        req_url = f"http://{host}:{actual_port}/"
+        with urllib.request.urlopen(req_url, timeout=5) as response:
+            content = response.read().decode("utf-8")
+            if response.status != 200 or "JobHunter" not in content:
+                print(f"[FAIL] Unexpected HTTP response: status {response.status}")
+                return False
+        print("[+] HTTP GET / served 200 OK with UI HTML.")
+
+        # 2. Test POST /api/get_save_dir
+        post_url = f"http://{host}:{actual_port}/api/get_save_dir"
+        post_req = urllib.request.Request(
+            post_url,
+            data=b"{}",
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(post_req, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            if not data.get("success"):
+                print(f"[FAIL] API /api/get_save_dir failed: {data}")
+                return False
+        print(f"[+] API backend operational. Active save directory: {data.get('path')}")
+
+        server.shutdown()
+        print("-------------------------------------------------------")
+        print("[+] ALL INTERNAL SMOKE TESTS PASSED SUCCESSFULLY!")
+        print("=======================================================")
+        return True
+    except Exception as e:
+        print(f"[FAIL] Smoke test encountered an exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 def main():
     parser = argparse.ArgumentParser(
         description="JobHunter Germany - AI & ATS Job Finder for Germany (Bundesagentur API + JobSpy + Workday/Personio Detector)"
     )
     parser.add_argument("--cli", action="store_true", help="Run in headless CLI mode instead of GUI")
+    parser.add_argument("--test", action="store_true", help="Run internal smoke test of assets and HTTP server, then exit")
     parser.add_argument("--browser", action="store_true", help="Force browser window instead of native desktop window")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host interface to bind HTTP server to (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=5892, help="Port for the local backend server (default: 5892)")
@@ -135,7 +193,10 @@ def main():
 
     args = parser.parse_args()
 
-    if args.cli:
+    if args.test:
+        success = run_internal_smoke_test(host=args.host, port=args.port)
+        sys.exit(0 if success else 1)
+    elif args.cli:
         run_cli_mode(args)
     else:
         run_desktop_app(force_browser=args.browser, host=args.host, port=args.port)
@@ -143,7 +204,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:
+    except BaseException as e:
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            sys.exit(getattr(e, "code", 0) or 0)
+
         import time, traceback
         err_msg = traceback.format_exc()
         try:

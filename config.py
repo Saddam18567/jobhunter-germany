@@ -9,10 +9,15 @@ if getattr(sys, "frozen", False):
 else:
     BASE_DIR = Path(__file__).resolve().parent
 
-STATIC_DIR = BASE_DIR / "ui" / "static"
-# If running frozen and static is inside _internal/ui/static
-if not STATIC_DIR.exists() and (BASE_DIR / "_internal" / "ui" / "static").exists():
+# Locate UI Static Directory (handles _MEIPASS, _internal, or direct folder)
+if hasattr(sys, "_MEIPASS") and (Path(sys._MEIPASS) / "ui" / "static").exists():
+    STATIC_DIR = Path(sys._MEIPASS) / "ui" / "static"
+elif (BASE_DIR / "ui" / "static").exists():
+    STATIC_DIR = BASE_DIR / "ui" / "static"
+elif (BASE_DIR / "_internal" / "ui" / "static").exists():
     STATIC_DIR = BASE_DIR / "_internal" / "ui" / "static"
+else:
+    STATIC_DIR = BASE_DIR / "ui" / "static"
 
 # Safe Exports Directory resolution
 EXPORTS_DIR = BASE_DIR / "exports"

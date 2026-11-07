@@ -319,6 +319,44 @@ def start_http_server(host: str = "127.0.0.1", port: int = 5892) -> tuple[HTTPSe
     return server, target_port
 
 
+def is_windows_webview2_available() -> bool:
+    """Check if EdgeChromium / WebView2 runtime is available on Windows."""
+    if platform.system() != "Windows":
+        return True
+    try:
+        import winreg
+        guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+        paths = [
+            rf"SOFTWARE\Microsoft\EdgeUpdate\Clients\{guid}",
+            rf"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{guid}"
+        ]
+        for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            for path in paths:
+                try:
+                    with winreg.OpenKey(root, path) as k:
+                        val, _ = winreg.QueryValueEx(k, "pv")
+                        if val and val != "0":
+                            return True
+                except Exception:
+                    continue
+        edge_paths = [
+            r"SOFTWARE\Microsoft\Edge\BLBeacon",
+            r"SOFTWARE\WOW6432Node\Microsoft\Edge\BLBeacon"
+        ]
+        for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            for path in edge_paths:
+                try:
+                    with winreg.OpenKey(root, path) as k:
+                        val, _ = winreg.QueryValueEx(k, "version")
+                        if val and val != "0":
+                            return True
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return False
+
+
 def run_desktop_app(force_browser: bool = False, host: str = "127.0.0.1", port: int = 5892):
     """
     Launch JobHunter Germany desktop app.
@@ -346,7 +384,12 @@ def run_desktop_app(force_browser: bool = False, host: str = "127.0.0.1", port: 
     server, actual_port = start_http_server(host=host, port=port)
     url = f"http://127.0.0.1:{actual_port}/"
 
-    can_open_webview = (not force_browser) and (webview.guilib is not None or platform.system() in ["Windows", "Darwin"])
+    # Only attempt pywebview on Windows if WebView2 is installed to prevent MSHTML (IE) crashes
+    can_open_webview = (
+        not force_browser
+        and (webview.guilib is not None or platform.system() in ["Windows", "Darwin"])
+        and (platform.system() != "Windows" or is_windows_webview2_available())
+    )
 
     if can_open_webview:
         try:
@@ -368,6 +411,7 @@ def run_desktop_app(force_browser: bool = False, host: str = "127.0.0.1", port: 
 
     # Fallback: Launch default browser
     try:
+        logger.info(f"Opening browser interface at {url}...")
         webbrowser.open(url)
     except Exception as e:
         logger.warning(f"Could not open browser automatically: {e}")

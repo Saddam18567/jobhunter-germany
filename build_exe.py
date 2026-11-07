@@ -56,6 +56,12 @@ def build():
             "--collect-all", "clr_loader",
             "--hidden-import", "clr",
             "--hidden-import", "System",
+            "--hidden-import", "pythonnet",
+            "--hidden-import", "clr_loader",
+            "--hidden-import", "webview.platforms.winforms",
+            "--hidden-import", "webview.platforms.win32",
+            "--hidden-import", "webview.platforms.edgechromium",
+            "--hidden-import", "webview.platforms.mshtml",
         ])
 
     cmd.append(str(BASE_DIR / "main.py"))

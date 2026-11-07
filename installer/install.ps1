@@ -182,6 +182,7 @@ if ($IsBinary) {
     if ($proc.HasExited -and $proc.ExitCode -ne 0) {
         Write-Host "[!] Note: Process exited with code $($proc.ExitCode)." -ForegroundColor Yellow
         Write-Host "    Check $InstallDir\exports\jobhunter_debug.log or crash.log for details." -ForegroundColor Gray
+        Read-Host "Press Enter to exit..."
     }
 } else {
     Start-Process -FilePath "$InstallDir\.venv\Scripts\pythonw.exe" -ArgumentList "`"$InstallDir\main.py`"" -WorkingDirectory "$InstallDir"

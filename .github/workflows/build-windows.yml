@@ -41,12 +41,20 @@ jobs:
             throw "JobHunterGermany.exe was not created in dist/JobHunterGermany/"
           }
           Write-Host "Verified JobHunterGermany.exe exists." -ForegroundColor Green
-          Write-Host "Running startup smoke test..." -ForegroundColor Cyan
-          & "dist/JobHunterGermany/JobHunterGermany.exe" --cli --help
-          if ($LASTEXITCODE -ne 0) {
-            throw "JobHunterGermany.exe smoke test failed with exit code $LASTEXITCODE"
+
+          Write-Host "Running CLI Help Smoke Test..." -ForegroundColor Cyan
+          $proc1 = Start-Process -FilePath "dist/JobHunterGermany/JobHunterGermany.exe" -ArgumentList "--cli", "--help" -Wait -PassThru -NoNewWindow
+          if ($proc1.ExitCode -ne 0) {
+            throw "JobHunterGermany.exe --cli --help smoke test failed with exit code $($proc1.ExitCode)"
           }
-          Write-Host "Smoke test passed successfully!" -ForegroundColor Green
+          Write-Host "CLI Help smoke test passed successfully!" -ForegroundColor Green
+
+          Write-Host "Running Internal Self-Test (Assets, Server & API)..." -ForegroundColor Cyan
+          $proc2 = Start-Process -FilePath "dist/JobHunterGermany/JobHunterGermany.exe" -ArgumentList "--test" -Wait -PassThru -NoNewWindow
+          if ($proc2.ExitCode -ne 0) {
+            throw "JobHunterGermany.exe --test smoke test failed with exit code $($proc2.ExitCode)"
+          }
+          Write-Host "Internal Self-Test passed successfully!" -ForegroundColor Green
 
       - name: Package Windows Installer Zip
         run: |
