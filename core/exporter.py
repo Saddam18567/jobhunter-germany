@@ -133,7 +133,7 @@ class JobExporter:
                 if col_num in (direct_apply_col, job_url_col) and cell.value:
                     url_str = str(cell.value).strip()
                     if url_str.startswith("http://") or url_str.startswith("https://"):
-                        label = "Apply Link ↗" if col_num == direct_apply_col else "View Listing ↗"
+                        label = "Apply Link [->]" if col_num == direct_apply_col else "View Listing [->]"
                         cell.hyperlink = url_str
                         cell.value = label
                         cell.font = link_font

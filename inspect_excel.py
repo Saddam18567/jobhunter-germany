@@ -24,8 +24,8 @@ def main():
         target_path = files[0]
 
     print("=========================================================================================")
-    print(f"📊 Viewing Excel File: {target_path.name}")
-    print(f"📁 Full Path:         {target_path.resolve()}")
+    print(f"[*] Viewing Excel File: {target_path.name}")
+    print(f"[*] Full Path:         {target_path.resolve()}")
     print("=========================================================================================\n")
 
     wb = openpyxl.load_workbook(target_path)
@@ -60,20 +60,20 @@ def main():
         apply_cell = row[apply_col]
         apply_url = apply_cell.hyperlink.target if apply_cell.hyperlink else str(apply_cell.value)
 
-        ats_badge = f"⚡ [{platform}]" if app_type == "Direct ATS" else f"[{platform}]"
+        ats_badge = f"[DIRECT ATS: {platform}]" if app_type == "Direct ATS" else f"[{platform}]"
 
         print(f"#{idx}. {title}")
-        print(f"    🏢 Company:    {company}")
-        print(f"    📍 Location:   {loc}")
+        print(f"    Company:     {company}")
+        print(f"    Location:    {loc}")
         if kw:
-            print(f"    🔑 Keywords:   {kw}")
-        print(f"    🎯 Platform:   {ats_badge} ({app_type})")
-        print(f"    📝 Guidance:   {how_to}")
-        print(f"    🔗 Direct Link: {apply_url}")
+            print(f"    Keywords:    {kw}")
+        print(f"    Platform:    {ats_badge} ({app_type})")
+        print(f"    Guidance:    {how_to}")
+        print(f"    Direct Link: {apply_url}")
         print("    " + "-" * 75)
 
     print("\n=========================================================================================")
-    print("✅ All jobs listed above are stored in the Excel (.xlsx) sheet.")
+    print("[+] All jobs listed above are stored in the Excel (.xlsx) sheet.")
     print("=========================================================================================\n")
 
 if __name__ == "__main__":

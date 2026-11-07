@@ -4,7 +4,7 @@
 $ErrorActionPreference = "Stop"
 
 Write-Host "=======================================================" -ForegroundColor Cyan
-Write-Host "     JobHunter Germany - Standalone Installer 🇩🇪      " -ForegroundColor Yellow
+Write-Host "     JobHunter Germany - Standalone Installer [DE]     " -ForegroundColor Yellow
 Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -190,7 +190,7 @@ if ($IsBinary) {
 
 Write-Host ""
 Write-Host "=======================================================" -ForegroundColor Cyan
-Write-Host "  🎉 Installation Complete! Application is running.   " -ForegroundColor Yellow
+Write-Host "  [+] Installation Complete! Application is running.   " -ForegroundColor Yellow
 Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host ""
 Start-Sleep -Seconds 3

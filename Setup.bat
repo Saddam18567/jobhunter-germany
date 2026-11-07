@@ -1,9 +1,10 @@
 @echo off
+chcp 65001 >nul 2>&1
 setlocal
-title JobHunter Germany Setup 🇩🇪
+title JobHunter Germany Setup [DE]
 
 echo =======================================================
-echo          JobHunter Germany Installer 🇩🇪
+echo          JobHunter Germany Installer [DE]
 echo =======================================================
 echo.
 echo Installing JobHunter Germany on your laptop...

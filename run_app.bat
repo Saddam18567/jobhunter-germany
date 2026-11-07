@@ -1,9 +1,10 @@
 @echo off
+chcp 65001 >nul 2>&1
 setlocal enabledelayedexpansion
-title JobHunter Germany 🇩🇪
+title JobHunter Germany [DE]
 
 echo =======================================================
-echo          JobHunter Germany Launcher 🇩🇪
+echo          JobHunter Germany Launcher [DE]
 echo =======================================================
 
 REM Check if Python is installed

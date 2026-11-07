@@ -1,9 +1,10 @@
 @echo off
+chcp 65001 >nul 2>&1
 setlocal
-title Build JobHunter Germany Executable 🇩🇪
+title Build JobHunter Germany Executable [DE]
 
 echo =======================================================
-echo     Packaging JobHunter Germany into Windows .exe 🇩🇪
+echo     Packaging JobHunter Germany into Windows .exe [DE]
 echo =======================================================
 
 REM Check if Python is installed

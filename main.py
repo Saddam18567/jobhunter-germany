@@ -6,6 +6,10 @@ Unified Job Search across German APIs, Scrapers (JobSpy), and ATS Detection.
 
 import os
 import sys
+
+# Force UTF-8 for IO encoding globally to eliminate cp1252 charmap errors on Windows
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
 import argparse
 from pathlib import Path
 
@@ -15,16 +19,16 @@ if sys.platform == "win32":
         import ctypes
         ctypes.windll.kernel32.AttachConsole(-1)
         if sys.stdout is None or not hasattr(sys.stdout, "write"):
-            sys.stdout = open("CONOUT$", "w", encoding="utf-8")
+            sys.stdout = open("CONOUT$", "w", encoding="utf-8", errors="replace")
         if sys.stderr is None or not hasattr(sys.stderr, "write"):
-            sys.stderr = open("CONOUT$", "w", encoding="utf-8")
+            sys.stderr = open("CONOUT$", "w", encoding="utf-8", errors="replace")
     except Exception:
         pass
     try:
         if sys.stdout and hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(encoding="utf-8")
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if sys.stderr and hasattr(sys.stderr, "reconfigure"):
-            sys.stderr.reconfigure(encoding="utf-8")
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
 
