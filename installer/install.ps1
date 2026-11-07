@@ -177,7 +177,12 @@ Write-Host "      Start Menu shortcut created: $StartMenuPath\JobHunter Germany.
 # Launch Application
 Write-Host "[4/4] Launching JobHunter Germany..." -ForegroundColor Green
 if ($IsBinary) {
-    Start-Process -FilePath "$InstallDir\JobHunterGermany.exe" -WorkingDirectory "$InstallDir"
+    $proc = Start-Process -FilePath "$InstallDir\JobHunterGermany.exe" -WorkingDirectory "$InstallDir" -PassThru
+    Start-Sleep -Seconds 2
+    if ($proc.HasExited -and $proc.ExitCode -ne 0) {
+        Write-Host "[!] Note: Process exited with code $($proc.ExitCode)." -ForegroundColor Yellow
+        Write-Host "    Check $InstallDir\exports\jobhunter_debug.log or crash.log for details." -ForegroundColor Gray
+    }
 } else {
     Start-Process -FilePath "$InstallDir\.venv\Scripts\pythonw.exe" -ArgumentList "`"$InstallDir\main.py`"" -WorkingDirectory "$InstallDir"
 }

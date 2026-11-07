@@ -47,8 +47,18 @@ def build():
         "--hidden-import", "requests",
         "--hidden-import", "bs4",
         "--hidden-import", "certifi",
-        str(BASE_DIR / "main.py")
+        "--hidden-import", "proxy_tools",
     ]
+
+    if platform.system() == "Windows":
+        cmd.extend([
+            "--collect-all", "pythonnet",
+            "--collect-all", "clr_loader",
+            "--hidden-import", "clr",
+            "--hidden-import", "System",
+        ])
+
+    cmd.append(str(BASE_DIR / "main.py"))
 
     print("[*] Running PyInstaller command:")
     print("    " + " ".join(cmd))

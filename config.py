@@ -14,20 +14,31 @@ STATIC_DIR = BASE_DIR / "ui" / "static"
 if not STATIC_DIR.exists() and (BASE_DIR / "_internal" / "ui" / "static").exists():
     STATIC_DIR = BASE_DIR / "_internal" / "ui" / "static"
 
+# Safe Exports Directory resolution
 EXPORTS_DIR = BASE_DIR / "exports"
-EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
-
-# Configure logging to console and a debug file in exports
-import logging
-log_file = EXPORTS_DIR / "jobhunter_debug.log"
 try:
+    EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    # Fallback to user's AppData or Home if BASE_DIR is read-only (e.g. Program Files)
+    import os
+    app_data = os.environ.get("LOCALAPPDATA") or os.environ.get("USERPROFILE") or str(Path.home())
+    EXPORTS_DIR = Path(app_data) / "JobHunterGermany" / "exports"
+    try:
+        EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+
+# Configure logging with safe stream handling
+import logging
+try:
+    log_file = EXPORTS_DIR / "jobhunter_debug.log"
+    handlers = [logging.FileHandler(str(log_file), encoding="utf-8", mode="a")]
+    if sys.stdout is not None and hasattr(sys.stdout, "write"):
+        handlers.append(logging.StreamHandler(sys.stdout))
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers=[
-            logging.FileHandler(str(log_file), encoding="utf-8", mode="a"),
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=handlers
     )
 except Exception:
     pass

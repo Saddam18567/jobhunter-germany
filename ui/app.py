@@ -295,31 +295,64 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
         pass
 
 
-def start_http_server(host: str = "0.0.0.0", port: int = 5892) -> HTTPServer:
-    """Start local background HTTP server."""
-    server = HTTPServer((host, port), AppRequestHandler)
+def start_http_server(host: str = "127.0.0.1", port: int = 5892) -> tuple[HTTPServer, int]:
+    """Start local background HTTP server, auto-incrementing port if already in use."""
+    server = None
+    target_port = port
+    
+    # Try preferred port and subsequent ports in case previous instance is running
+    for p in range(port, port + 25):
+        try:
+            server = HTTPServer((host, p), AppRequestHandler)
+            target_port = p
+            break
+        except OSError:
+            continue
+
+    if server is None:
+        # Fallback to dynamic OS port allocation
+        server = HTTPServer((host, 0), AppRequestHandler)
+        target_port = server.server_port
+
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    return server
+    return server, target_port
 
 
-def run_desktop_app(force_browser: bool = False, host: str = "0.0.0.0", port: int = 5892):
+def run_desktop_app(force_browser: bool = False, host: str = "127.0.0.1", port: int = 5892):
     """
     Launch JobHunter Germany desktop app.
     Uses PyWebView native desktop window when available (e.g. on Windows with WebView2),
     or falls back gracefully to opening the user's default browser or serving over HTTP.
     """
+    # Configure pythonnet runtime path on Windows if frozen
+    if platform.system() == "Windows" and getattr(sys, "frozen", False):
+        try:
+            base_dir = Path(sys.executable).resolve().parent
+            candidates = [
+                base_dir / "python312.dll",
+                base_dir / "_internal" / "python312.dll",
+                base_dir / f"python{sys.version_info.major}{sys.version_info.minor}.dll",
+                base_dir / "_internal" / f"python{sys.version_info.major}{sys.version_info.minor}.dll",
+            ]
+            for cand in candidates:
+                if cand.exists():
+                    os.environ.setdefault("PYTHONNET_PYDLL", str(cand))
+                    break
+        except Exception:
+            pass
+
     api = AppRequestHandler.api
-    start_http_server(host=host, port=port)
-    url = f"http://localhost:{port}/"
+    server, actual_port = start_http_server(host=host, port=port)
+    url = f"http://127.0.0.1:{actual_port}/"
 
     can_open_webview = (not force_browser) and (webview.guilib is not None or platform.system() in ["Windows", "Darwin"])
 
     if can_open_webview:
         try:
-            print("[INFO] Launching JobHunter Germany in native desktop window...")
+            logger.info("Initializing native desktop window...")
             window = webview.create_window(
-                title="JobHunter Germany 🇩🇪 - AI & ATS Job Finder",
+                title="JobHunter Germany - AI & ATS Job Finder",
                 url=url,
                 js_api=api,
                 width=1280,
@@ -331,17 +364,17 @@ def run_desktop_app(force_browser: bool = False, host: str = "0.0.0.0", port: in
             webview.start(debug=False)
             return
         except Exception as e:
-            print(f"[WARNING] Native window could not be initialized ({e}). Falling back to browser interface...")
+            logger.warning(f"Native window could not be initialized ({e}). Falling back to browser interface...")
 
-    print(f"\n=======================================================")
-    print(f"  🇩🇪 JobHunter Germany is running!")
-    print(f"  URL: {url}")
-    print(f"  Press Ctrl+C in this terminal to stop the application.")
-    print(f"=======================================================\n")
-    webbrowser.open(url)
+    # Fallback: Launch default browser
+    try:
+        webbrowser.open(url)
+    except Exception as e:
+        logger.warning(f"Could not open browser automatically: {e}")
+
     try:
         import time
         while True:
             time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n[INFO] JobHunter Germany shutting down.")
+    except (KeyboardInterrupt, SystemExit):
+        pass

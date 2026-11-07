@@ -34,13 +34,19 @@ jobs:
         run: |
           python build_exe.py
 
-      - name: Verify Executable Exists
+      - name: Verify Executable Exists & Runs (Smoke Test)
         shell: pwsh
         run: |
           if (-not (Test-Path "dist/JobHunterGermany/JobHunterGermany.exe")) {
             throw "JobHunterGermany.exe was not created in dist/JobHunterGermany/"
           }
           Write-Host "Verified JobHunterGermany.exe exists." -ForegroundColor Green
+          Write-Host "Running startup smoke test..." -ForegroundColor Cyan
+          & "dist/JobHunterGermany/JobHunterGermany.exe" --cli --help
+          if ($LASTEXITCODE -ne 0) {
+            throw "JobHunterGermany.exe smoke test failed with exit code $LASTEXITCODE"
+          }
+          Write-Host "Smoke test passed successfully!" -ForegroundColor Green
 
       - name: Package Windows Installer Zip
         run: |
@@ -51,7 +57,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v1.1.1"
+          $tag = "v1.1.2"
           if ($env:GITHUB_REF -like "refs/tags/*") {
             $tag = $env:GITHUB_REF.Substring(10)
           }

@@ -9,15 +9,41 @@ import sys
 import argparse
 from pathlib import Path
 
-# Fix Windows console encoding if running with console
+# Fix Windows console encoding and attach to console if run from CLI/terminal
 if sys.platform == "win32":
     try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
+        import ctypes
+        ctypes.windll.kernel32.AttachConsole(-1)
+        if sys.stdout is None or not hasattr(sys.stdout, "write"):
+            sys.stdout = open("CONOUT$", "w", encoding="utf-8")
+        if sys.stderr is None or not hasattr(sys.stderr, "write"):
+            sys.stderr = open("CONOUT$", "w", encoding="utf-8")
+    except Exception:
+        pass
+    try:
+        if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8")
+        if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8")
     except Exception:
         pass
 
-# Configure CA Certs globally for frozen PyInstaller and Windows environment
+# Configure pythonnet DLL and CA Certs globally for frozen PyInstaller environment
+if sys.platform == "win32" and getattr(sys, "frozen", False):
+    try:
+        base_dir = Path(sys.executable).resolve().parent
+        for cand in [
+            base_dir / "python312.dll",
+            base_dir / "_internal" / "python312.dll",
+            base_dir / f"python{sys.version_info.major}{sys.version_info.minor}.dll",
+            base_dir / "_internal" / f"python{sys.version_info.major}{sys.version_info.minor}.dll",
+        ]:
+            if cand.exists():
+                os.environ.setdefault("PYTHONNET_PYDLL", str(cand))
+                break
+    except Exception:
+        pass
+
 try:
     import certifi
     ca_bundle = certifi.where()
@@ -89,7 +115,7 @@ def main():
     )
     parser.add_argument("--cli", action="store_true", help="Run in headless CLI mode instead of GUI")
     parser.add_argument("--browser", action="store_true", help="Force browser window instead of native desktop window")
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host interface to bind HTTP server to (default: 0.0.0.0)")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host interface to bind HTTP server to (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=5892, help="Port for the local backend server (default: 5892)")
 
     # CLI Search Arguments
@@ -115,4 +141,32 @@ def main():
         run_desktop_app(force_browser=args.browser, host=args.host, port=args.port)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        import time, traceback
+        err_msg = traceback.format_exc()
+        try:
+            from config import EXPORTS_DIR
+            crash_file = EXPORTS_DIR / "crash.log"
+        except Exception:
+            crash_file = Path(os.environ.get("LOCALAPPDATA", ".")) / "JobHunterGermany" / "crash.log"
+        try:
+            crash_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(crash_file, "a", encoding="utf-8") as f:
+                f.write(f"\n--- CRASH AT {time.ctime()} ---\n{err_msg}\n")
+        except Exception:
+            pass
+
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    f"JobHunter Germany encountered an issue during startup:\n\n{str(e)[:400]}\n\nLog saved to:\n{crash_file}",
+                    "JobHunter Germany Error",
+                    0x10  # MB_ICONERROR
+                )
+            except Exception:
+                pass
+        sys.exit(1)
