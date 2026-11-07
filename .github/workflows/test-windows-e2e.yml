@@ -106,7 +106,8 @@ jobs:
         run: |
           Write-Host "Executing CLI live search for 'DevOps Engineer' in Berlin..." -ForegroundColor Cyan
           $exportFile = "C:\JobHunterApp\exports\cli_e2e_results.xlsx"
-          $p = Start-Process -FilePath "C:\JobHunterApp\JobHunterGermany.exe" -ArgumentList "--cli", "-k", "DevOps Engineer", "-l", "Berlin", "-s", "arbeitsagentur", "arbeitnow", "--limit", "5", "-e", $exportFile -Wait -PassThru -NoNewWindow
+          $argsStr = "--cli -k `"DevOps Engineer`" -l Berlin -s arbeitsagentur arbeitnow --limit 5 -e `"$exportFile`""
+          $p = Start-Process -FilePath "C:\JobHunterApp\JobHunterGermany.exe" -ArgumentList $argsStr -Wait -PassThru -NoNewWindow
           if ($p.ExitCode -ne 0) {
             throw "CLI search failed with exit code $($p.ExitCode)"
           }
