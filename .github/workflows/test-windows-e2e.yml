@@ -1,0 +1,216 @@
+name: End-to-End Windows Environment Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-windows-e2e:
+    name: Full Windows Native E2E Test
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      PYTHONIOENCODING: "utf-8"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12 (Windows 64-bit)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x64'
+
+      - name: Install dependencies & PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: "Phase 1: Build Native Windows Executable"
+        run: |
+          python build_exe.py
+
+      - name: "Phase 2: Package Windows Installer ZIP"
+        run: |
+          python package_release.py
+
+      - name: "Phase 3: Simulate User Extraction"
+        shell: pwsh
+        run: |
+          Write-Host "Simulating user extracting JobHunterGermany_Windows_Installer.zip..." -ForegroundColor Cyan
+          $zipPath = "release/JobHunterGermany_Windows_Installer.zip"
+          if (-not (Test-Path $zipPath)) {
+            throw "Installer ZIP was not created at $zipPath"
+          }
+          Expand-Archive -Path $zipPath -DestinationPath "C:\UserDownloads\Extracted" -Force
+          Write-Host "Extracted files:" -ForegroundColor Gray
+          Get-ChildItem -Path "C:\UserDownloads\Extracted" -Recurse | Select-Object FullName
+
+      - name: "Phase 4: Run Standalone Installer (install.ps1)"
+        shell: pwsh
+        run: |
+          $installerPath = "C:\UserDownloads\Extracted\JobHunterGermany_Installer\install.ps1"
+          if (-not (Test-Path $installerPath)) {
+            $installerPath = "C:\UserDownloads\Extracted\install.ps1"
+          }
+          Write-Host "Running installer: $installerPath ..." -ForegroundColor Cyan
+          & pwsh -NoProfile -ExecutionPolicy Bypass -File $installerPath -Silent -NoLaunch -TargetDir "C:\JobHunterApp"
+
+      - name: "Phase 5: Verify Filesystem & Windows Shortcuts"
+        shell: pwsh
+        run: |
+          Write-Host "--- Verifying Application Directory ---" -ForegroundColor Cyan
+          if (-not (Test-Path "C:\JobHunterApp\JobHunterGermany.exe")) {
+            throw "JobHunterGermany.exe not found in C:\JobHunterApp"
+          }
+          Write-Host "[+] Executable found: C:\JobHunterApp\JobHunterGermany.exe" -ForegroundColor Green
+
+          Write-Host "--- Verifying Static UI Assets ---" -ForegroundColor Cyan
+          $staticIndex = "C:\JobHunterApp\_internal\ui\static\index.html"
+          if (-not (Test-Path $staticIndex)) {
+            $staticIndex = "C:\JobHunterApp\ui\static\index.html"
+          }
+          if (-not (Test-Path $staticIndex)) {
+            throw "index.html not found in application directory"
+          }
+          Write-Host "[+] Static UI verified: $staticIndex" -ForegroundColor Green
+
+          Write-Host "--- Verifying Desktop Shortcut ---" -ForegroundColor Cyan
+          $desktopLnk = [Environment]::GetFolderPath("Desktop") + "\JobHunter Germany.lnk"
+          if (Test-Path $desktopLnk) {
+            Write-Host "[+] Desktop Shortcut verified: $desktopLnk" -ForegroundColor Green
+          }
+
+          Write-Host "--- Verifying Start Menu Shortcut ---" -ForegroundColor Cyan
+          $startLnk = [Environment]::GetFolderPath("Programs") + "\JobHunter Germany.lnk"
+          if (Test-Path $startLnk) {
+            Write-Host "[+] Start Menu Shortcut verified: $startLnk" -ForegroundColor Green
+          }
+
+      - name: "Phase 6: Run Native Binary Self-Test (--test)"
+        shell: pwsh
+        run: |
+          Write-Host "Executing C:\JobHunterApp\JobHunterGermany.exe --test ..." -ForegroundColor Cyan
+          $p = Start-Process -FilePath "C:\JobHunterApp\JobHunterGermany.exe" -ArgumentList "--test" -Wait -PassThru -NoNewWindow
+          if ($p.ExitCode -ne 0) {
+            throw "JobHunterGermany.exe --test failed with exit code $($p.ExitCode)"
+          }
+          Write-Host "[+] Self-Test completed successfully with exit code 0!" -ForegroundColor Green
+
+      - name: "Phase 7: Live Job Search Across German APIs (--cli)"
+        shell: pwsh
+        run: |
+          Write-Host "Executing CLI live search for 'DevOps Engineer' in Berlin..." -ForegroundColor Cyan
+          $exportFile = "C:\JobHunterApp\exports\cli_e2e_results.xlsx"
+          $p = Start-Process -FilePath "C:\JobHunterApp\JobHunterGermany.exe" -ArgumentList "--cli", "-k", "DevOps Engineer", "-l", "Berlin", "-s", "arbeitsagentur", "arbeitnow", "--limit", "5", "-e", $exportFile -Wait -PassThru -NoNewWindow
+          if ($p.ExitCode -ne 0) {
+            throw "CLI search failed with exit code $($p.ExitCode)"
+          }
+          if (-not (Test-Path $exportFile)) {
+            throw "Expected Excel file not found at $exportFile"
+          }
+          Write-Host "[+] CLI Search Succeeded! Generated: $exportFile ($((Get-Item $exportFile).Length) bytes)" -ForegroundColor Green
+
+      - name: "Phase 8: Web Server & Multi-Keyword Search API"
+        shell: pwsh
+        run: |
+          Write-Host "Starting JobHunterGermany web server on port 5929..." -ForegroundColor Cyan
+          $proc = Start-Process -FilePath "C:\JobHunterApp\JobHunterGermany.exe" -ArgumentList "--browser", "--port", "5929" -PassThru
+          Start-Sleep -Seconds 4
+
+          if ($proc.HasExited) {
+            throw "JobHunterGermany server exited prematurely with code $($proc.ExitCode)"
+          }
+
+          try {
+            Write-Host "Testing GET http://127.0.0.1:5929/ ..." -ForegroundColor Cyan
+            $getRes = Invoke-WebRequest -Uri "http://127.0.0.1:5929/" -UseBasicParsing -TimeoutSec 10
+            if ($getRes.StatusCode -ne 200) {
+              throw "GET / returned $($getRes.StatusCode)"
+            }
+            Write-Host "[+] Web UI served successfully (200 OK)." -ForegroundColor Green
+
+            Write-Host "Testing POST /api/search with multiple keywords (Python, Data Engineer)..." -ForegroundColor Cyan
+            $body = @{
+              keyword = "Python Developer, Data Engineer"
+              location = "Deutschland"
+              distance = 50
+              is_remote = $false
+              sources = @("arbeitsagentur", "arbeitnow")
+              results_per_source = 5
+              save_directory = "C:\JobHunterApp\exports"
+            } | ConvertTo-Json
+
+            $searchRes = Invoke-RestMethod -Uri "http://127.0.0.1:5929/api/search" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 60
+            if (-not $searchRes.success) {
+              throw "Search API returned failure: $($searchRes | Out-String)"
+            }
+
+            Write-Host "[+] Search API succeeded! Found $($searchRes.jobs.Count) jobs." -ForegroundColor Green
+            Write-Host "[+] Excel generated by API: $($searchRes.excel_path)" -ForegroundColor Green
+
+            if (-not (Test-Path $searchRes.excel_path)) {
+              throw "Excel file reported by API was not found on disk: $($searchRes.excel_path)"
+            }
+          } finally {
+            Write-Host "Stopping background server process..." -ForegroundColor Gray
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: "Phase 9: Inspect Generated Excel Spreadsheets"
+        shell: pwsh
+        run: |
+          python -c @"
+          import glob
+          from pathlib import Path
+          import openpyxl
+
+          excel_files = glob.glob('C:/JobHunterApp/exports/*.xlsx')
+          print(f'Total Excel files generated during test: {len(excel_files)}')
+
+          for f in excel_files:
+              p = Path(f)
+              print('=' * 80)
+              print(f'Inspecting: {p.name} ({p.stat().st_size} bytes)')
+              wb = openpyxl.load_workbook(f)
+              ws = wb.active
+              headers = [c.value for c in ws[1]]
+              rows = list(ws.iter_rows(min_row=2, values_only=True))
+              print(f'Sheet Title:   {ws.title}')
+              print(f'Columns ({len(headers)}): {headers}')
+              print(f'Total Job Rows: {len(rows)}')
+              print('-' * 80)
+              for i, r in enumerate(rows[:5], 1):
+                  print(f'  #{i} {r[0]} | {r[1]} | {r[2]} | Platform: {r[3]} ({r[4]})')
+              print('=' * 80)
+          "@
+
+      - name: "Phase 10: Verify Zero Crashes & Check Logs"
+        shell: pwsh
+        run: |
+          $crashLog = "C:\JobHunterApp\exports\crash.log"
+          if (Test-Path $crashLog) {
+            Write-Host "[FAIL] crash.log was detected!" -ForegroundColor Red
+            Get-Content $crashLog
+            throw "Application created a crash.log!"
+          }
+          Write-Host "[+] Zero crashes verified! crash.log does not exist." -ForegroundColor Green
+
+          $debugLog = "C:\JobHunterApp\exports\jobhunter_debug.log"
+          if (Test-Path $debugLog) {
+            Write-Host "--- Tail of Debug Log ---" -ForegroundColor Gray
+            Get-Content $debugLog -Tail 25
+          }
+
+      - name: "Phase 11: Upload Generated Excel Sheets & Logs as Artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-e2e-excel-and-logs
+          path: |
+            C:\JobHunterApp\exports\*.xlsx
+            C:\JobHunterApp\exports\*.log
+          if-no-files-found: error

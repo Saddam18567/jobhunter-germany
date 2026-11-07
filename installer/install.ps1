@@ -1,6 +1,12 @@
 # PowerShell Standalone Installer for JobHunter Germany
 # Allows the user to select their custom installation directory
 
+param(
+    [string]$TargetDir = "",
+    [switch]$Silent = $false,
+    [switch]$NoLaunch = $false
+)
+
 $ErrorActionPreference = "Stop"
 
 Write-Host "=======================================================" -ForegroundColor Cyan
@@ -74,40 +80,48 @@ if (-not $SourceDir) {
 
 # --- Prompt User for Installation Directory ---
 $DefaultDir = "$env:LOCALAPPDATA\JobHunterGermany"
-Write-Host "Choose where to install JobHunter Germany:" -ForegroundColor White
-Write-Host "Default location: $DefaultDir" -ForegroundColor Gray
-Write-Host "Press [ENTER] to use default, type [B] to browse folder, or type a custom path:" -ForegroundColor Yellow
-$userChoice = Read-Host "Install Path"
-
 $InstallDir = $DefaultDir
 
-if ([string]::IsNullOrWhiteSpace($userChoice)) {
+if (-not [string]::IsNullOrWhiteSpace($TargetDir)) {
+    $InstallDir = $TargetDir.Trim().Trim('"').Trim("'")
+    Write-Host "Target installation directory: $InstallDir" -ForegroundColor Cyan
+} elseif ($Silent) {
     $InstallDir = $DefaultDir
-} elseif ($userChoice.Trim().ToUpper() -eq "B") {
-    try {
-        Add-Type -AssemblyName System.Windows.Forms
-        $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
-        $folderBrowser.Description = "Select Installation Folder for JobHunter Germany"
-        $folderBrowser.ShowNewFolderButton = $true
-        $folderBrowser.SelectedPath = $DefaultDir
+    Write-Host "Silent mode: Using default location: $InstallDir" -ForegroundColor Cyan
+} else {
+    Write-Host "Choose where to install JobHunter Germany:" -ForegroundColor White
+    Write-Host "Default location: $DefaultDir" -ForegroundColor Gray
+    Write-Host "Press [ENTER] to use default, type [B] to browse folder, or type a custom path:" -ForegroundColor Yellow
+    $userChoice = Read-Host "Install Path"
 
-        if ($folderBrowser.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK -and -not [string]::IsNullOrWhiteSpace($folderBrowser.SelectedPath)) {
-            $selected = $folderBrowser.SelectedPath.Trim()
-            if (-not $selected.ToLower().EndsWith("jobhuntergermany")) {
-                $InstallDir = Join-Path $selected "JobHunterGermany"
+    if ([string]::IsNullOrWhiteSpace($userChoice)) {
+        $InstallDir = $DefaultDir
+    } elseif ($userChoice.Trim().ToUpper() -eq "B") {
+        try {
+            Add-Type -AssemblyName System.Windows.Forms
+            $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+            $folderBrowser.Description = "Select Installation Folder for JobHunter Germany"
+            $folderBrowser.ShowNewFolderButton = $true
+            $folderBrowser.SelectedPath = $DefaultDir
+
+            if ($folderBrowser.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK -and -not [string]::IsNullOrWhiteSpace($folderBrowser.SelectedPath)) {
+                $selected = $folderBrowser.SelectedPath.Trim()
+                if (-not $selected.ToLower().EndsWith("jobhuntergermany")) {
+                    $InstallDir = Join-Path $selected "JobHunterGermany"
+                } else {
+                    $InstallDir = $selected
+                }
             } else {
-                $InstallDir = $selected
+                Write-Host "No folder selected. Using default location." -ForegroundColor Gray
+                $InstallDir = $DefaultDir
             }
-        } else {
-            Write-Host "No folder selected. Using default location." -ForegroundColor Gray
+        } catch {
+            Write-Host "Folder dialog unavailable. Using default location." -ForegroundColor Gray
             $InstallDir = $DefaultDir
         }
-    } catch {
-        Write-Host "Folder dialog unavailable. Using default location." -ForegroundColor Gray
-        $InstallDir = $DefaultDir
+    } else {
+        $InstallDir = $userChoice.Trim().Trim('"').Trim("'")
     }
-} else {
-    $InstallDir = $userChoice.Trim().Trim('"').Trim("'")
 }
 
 Write-Host ""
@@ -175,17 +189,23 @@ $StartMenuShortcut.Save()
 Write-Host "      Start Menu shortcut created: $StartMenuPath\JobHunter Germany.lnk" -ForegroundColor Gray
 
 # Launch Application
-Write-Host "[4/4] Launching JobHunter Germany..." -ForegroundColor Green
-if ($IsBinary) {
-    $proc = Start-Process -FilePath "$InstallDir\JobHunterGermany.exe" -WorkingDirectory "$InstallDir" -PassThru
-    Start-Sleep -Seconds 2
-    if ($proc.HasExited -and $proc.ExitCode -ne 0) {
-        Write-Host "[!] Note: Process exited with code $($proc.ExitCode)." -ForegroundColor Yellow
-        Write-Host "    Check $InstallDir\exports\jobhunter_debug.log or crash.log for details." -ForegroundColor Gray
-        Read-Host "Press Enter to exit..."
+if (-not $NoLaunch) {
+    Write-Host "[4/4] Launching JobHunter Germany..." -ForegroundColor Green
+    if ($IsBinary) {
+        $proc = Start-Process -FilePath "$InstallDir\JobHunterGermany.exe" -WorkingDirectory "$InstallDir" -PassThru
+        Start-Sleep -Seconds 2
+        if ($proc.HasExited -and $proc.ExitCode -ne 0) {
+            Write-Host "[!] Note: Process exited with code $($proc.ExitCode)." -ForegroundColor Yellow
+            Write-Host "    Check $InstallDir\exports\jobhunter_debug.log or crash.log for details." -ForegroundColor Gray
+            if (-not $Silent) {
+                Read-Host "Press Enter to exit..."
+            }
+        }
+    } else {
+        Start-Process -FilePath "$InstallDir\.venv\Scripts\pythonw.exe" -ArgumentList "`"$InstallDir\main.py`"" -WorkingDirectory "$InstallDir"
     }
 } else {
-    Start-Process -FilePath "$InstallDir\.venv\Scripts\pythonw.exe" -ArgumentList "`"$InstallDir\main.py`"" -WorkingDirectory "$InstallDir"
+    Write-Host "[4/4] Installation finished (launch skipped via -NoLaunch)." -ForegroundColor Gray
 }
 
 Write-Host ""
@@ -193,4 +213,6 @@ Write-Host "=======================================================" -Foreground
 Write-Host "  [+] Installation Complete! Application is running.   " -ForegroundColor Yellow
 Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host ""
-Start-Sleep -Seconds 3
+if (-not $Silent) {
+    Start-Sleep -Seconds 3
+}
